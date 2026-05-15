@@ -10,6 +10,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// rest of the app can re-apply behavior such as installing hotkeys.
     var onConfigChanged: (() -> Void)?
 
+    /// Invoked when the user picks "Mission Control" from the menu.
+    var onShowMissionControl: (() -> Void)?
+
     func install() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -40,6 +43,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         )
         startItem.target = self
         menu.addItem(startItem)
+
+        let mcItem = NSMenuItem(
+            title: "Mission Control…",
+            action: #selector(showMissionControl),
+            keyEquivalent: "m"
+        )
+        mcItem.target = self
+        menu.addItem(mcItem)
 
         let modesMenu = NSMenu(title: "Modes")
         for mode in config.modes {
@@ -138,6 +149,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         openConfig.target = self
         menu.addItem(openConfig)
 
+        let editVerses = NSMenuItem(
+            title: "Edit Daily Verses…",
+            action: #selector(openVersesFile),
+            keyEquivalent: ""
+        )
+        editVerses.target = self
+        menu.addItem(editVerses)
+
         let reload = NSMenuItem(
             title: "Reload Config",
             action: #selector(reloadConfig),
@@ -232,8 +251,17 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         _ = WindowSnapper.ensureAccessibility(prompt: true)
     }
 
+    @objc private func showMissionControl() {
+        onShowMissionControl?()
+    }
+
     @objc private func openConfigFile() {
         NSWorkspace.shared.open(ConfigManager.shared.configFile)
+    }
+
+    @objc private func openVersesFile() {
+        VerseOfTheDay.installSeed()
+        NSWorkspace.shared.open(VerseOfTheDay.customFileURL)
     }
 
     @objc private func reloadConfig() {

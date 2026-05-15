@@ -1,5 +1,7 @@
 {
   "hideOthersAfterLaunch": true,
+  "enableSnap": true,
+  "enableDragSnap": true,
   "defaultMode": "Full",
   "modes": [
     {
@@ -40,5 +42,27 @@
         "https://mail.google.com"
       ]
     }
-  ]
+  ],
+  "missionControl": {
+    "includeCalendar": true,
+    "includeOutlook": true,
+    "includeOutlookCalendar": true,
+    "includeGraphCalendar": false,
+    "includeGmail": false,
+    "includeNotifications": true,
+    "lookbackHours": 24,
+    "vipSenders": [],
+    "notificationAppBlocklist": [],
+    "openOnStartWork": true,
+    "gmail": {
+      "clientID": "",
+      "clientSecret": "",
+      "refreshToken": ""
+    },
+    "graph": {
+      "clientID": "",
+      "tenant": "common",
+      "refreshToken": ""
+    }
+  }
 }

@@ -5,6 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let menuBar = MenuBarController()
     private let hotkeys = HotkeyManager()
     private let dragSnapper = DragSnapper()
+    @MainActor private lazy var missionControl = MissionControlWindow()
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Register before applicationDidFinishLaunching so a brotherpaul:// URL
@@ -21,12 +22,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         ConfigManager.shared.bootstrap()
+        VerseOfTheDay.installSeed()
         menuBar.install()
         menuBar.onConfigChanged = { [weak self] in self?.applySnapConfig() }
+        menuBar.onShowMissionControl = { [weak self] in
+            Task { @MainActor in self?.missionControl.show() }
+        }
 
         applySnapConfig()
 
         handleLaunchArguments()
+    }
+
+    @MainActor
+    func showMissionControl() {
+        missionControl.show()
     }
 
     /// (Re-)install hotkeys and drag-snap based on current config + permission.
@@ -91,5 +101,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         AppLauncher.launch(mode: mode, hideOthers: config.hideOthersAfterLaunch)
+
+        if config.missionControl.openOnStartWork {
+            Task { @MainActor in self.missionControl.show() }
+        }
     }
 }

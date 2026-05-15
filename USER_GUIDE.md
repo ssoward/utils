@@ -2,13 +2,20 @@
 
 > "Brother Paul, start my work."
 
-A tiny macOS menu bar app that does two things very well:
+A tiny macOS menu bar app that does four things very well:
 
 1. **Launches your work apps** with one click, one URL, or one voice command.
 2. **Snaps any window** to halves, corners, or fullscreen — with keyboard
    shortcuts or by dragging to a screen edge.
+3. **Surfaces a Mission Control digest** of today's upcoming events,
+   priority email, and recent notifications — manually or whenever you
+   start a work session.
+4. **Greets you with a daily Christ-focused verse** from a 132-passage
+   library spanning the Book of Mormon and the four Gospels of the KJV.
 
-Everything is local. No accounts, no cloud, no analytics.
+Everything is local. No accounts, no cloud, no analytics. Two optional
+integrations talk to the network (Gmail and Microsoft Graph) and only
+after you've explicitly configured them with your own OAuth credentials.
 
 ---
 
@@ -143,6 +150,182 @@ Both are also persisted in `config.json` as `enableSnap` and `enableDragSnap`.
 
 ---
 
+## 3.5 Mission Control — today's digest
+
+Click 🧠 → **Mission Control…** (or just press `⌘M` with the menu open) and
+Brother Paul builds a one-pager:
+
+```
+🧠 Mission Control                        [Refresh]
+─────────────────────────────────────────────────
+📅 Upcoming Events  (3)
+   • 10:00 – 10:30   1:1 with Mei            in 12m
+   • 11:00 – 12:00   Sprint Planning         in 1h
+   • 14:00 – 14:30   Vendor sync             in 4h
+
+✉️  Priority Email  (5)
+   • Outlook   "Q3 plan review"   alice@…   25m ago
+   • Gmail     "FYI: prod alert"  ops-bot…  2h ago
+   • …
+
+🔔 Recent Notifications  (12)
+   • Slack       "@you on #incidents"     3h ago
+   • Calendar    "Sprint Planning soon"   1h ago
+   • …
+```
+
+It also opens automatically when you fire "Start Work" (toggle that via
+`missionControl.openOnStartWork` if you'd rather it stayed quiet).
+
+### Setup
+
+Each section asks for its own permission the first time it runs. You don't
+have to set them all up at once — disabled sections just say "denied" or
+"not configured" without breaking the rest.
+
+| Section        | Permission you'll grant                                             |
+|----------------|---------------------------------------------------------------------|
+| Events         | **Calendars** — macOS prompts you on first run                      |
+| Outlook        | **Automation → Microsoft Outlook** — macOS prompts on first script  |
+| Gmail          | One-time **OAuth** — run `./bin/brpaul-gmail-auth.sh` (below)       |
+| Notifications  | **Full Disk Access** — drag BrotherPaul.app in manually             |
+
+### VIPs
+
+Add senders to `missionControl.vipSenders` in your `config.json` and they
+float to the top of the email section with a red priority dot. Matching is
+case-insensitive substring against the **From** display name or address —
+so `"Project Alpha"` flags anything from "Project Alpha Updates
+<no-reply@…>" and `"@vip.example.com"` flags an entire domain.
+
+### Outlook calendar via Microsoft Graph (recommended for Outlook users)
+
+Microsoft removed calendar scripting from Outlook for Mac, so the AppleScript
+fetcher can't pull events. Microsoft Graph is the supported path and works
+regardless of which Outlook UI you're on.
+
+1. [entra.microsoft.com](https://entra.microsoft.com) → **App registrations →
+   New registration**.
+   - Name: `Brother Paul`
+   - Supported account types: **"Accounts in this organizational directory
+     only"** if your Outlook is a work/school account, or **"any
+     organizational directory + personal Microsoft accounts"** if you want it
+     to work for personal Outlook too.
+   - Redirect URI: leave blank for now.
+   - Click **Register**.
+2. In the new app → **Authentication → Add a platform → "Mobile and desktop
+   applications"** → in the **Custom redirect URIs** box add
+   `http://localhost:8765` → **Configure**. Scroll down, set **"Allow public
+   client flows" → Yes**, then **Save**.
+3. **API permissions → Add a permission → Microsoft Graph → Delegated
+   permissions → Calendars.Read → Add**. If your tenant requires admin
+   consent, click **Grant admin consent**.
+4. On the **Overview** page, copy the **Application (client) ID**.
+5. In Terminal, from this repo:
+   ```bash
+   ./bin/brpaul-graph-auth.sh <CLIENT_ID>
+   # if your tenant SSO requires a specific tenant GUID:
+   # BRPAUL_TENANT=<your-tenant-guid> ./bin/brpaul-graph-auth.sh <CLIENT_ID>
+   ```
+   Browser opens, you sign in with the same Microsoft account that owns the
+   Outlook calendar, you consent. The script prints a JSON snippet — paste it
+   into `~/Library/Application Support/BrotherPaul/config.json` under
+   `missionControl` (replacing the empty `graph` block), set
+   `"includeGraphCalendar": true`, and choose **Reload Config** from the menu.
+
+After that: 🧠 → **Mission Control… → Refresh** and your Outlook events show
+in the Events section.
+
+The refresh token lives in `config.json`, never leaves your machine, and is
+scoped to read-only calendar access.
+
+### Gmail in 4 minutes
+
+If you want Gmail in the digest (Outlook works without any setup):
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → create a
+   project (or reuse one).
+2. **APIs & Services → Library** → enable **Gmail API**.
+3. **OAuth consent screen** → External, Testing, add yourself as a test user.
+4. **Credentials** → Create credentials → **OAuth client ID** → Application
+   type **Desktop app**. Copy the client ID + client secret.
+5. In Terminal, from this repo:
+   ```bash
+   ./bin/brpaul-gmail-auth.sh <CLIENT_ID> <CLIENT_SECRET>
+   ```
+   Your browser opens, you sign in, you'll see a Brother Paul confirmation
+   page. The script prints a JSON snippet — paste it into your `config.json`
+   under `missionControl.gmail`, set `"includeGmail": true`, and choose
+   **Reload Config** from the menu.
+
+The refresh token is stored in `config.json`, not Keychain. Keep that file
+to yourself.
+
+### Verse of the Day
+
+At the top of Mission Control you'll see a quote-card with one
+Christ-focused verse from a 132-passage library:
+
+- **61 from the Book of Mormon** (1 Nephi → Moroni)
+- **71 from the four Gospels of the KJV** (Matthew, Mark, Luke, John)
+
+Selection is **day-of-year modulo verse-count**, so the same calendar date
+returns the same verse year over year — predictable rhythm, not a surprise.
+
+**Edit / curate / replace** the library: 🧠 → **Edit Daily Verses…** opens
+`~/Library/Application Support/BrotherPaul/verses.json` in your default
+editor. Each entry has `reference`, `text`, and optional `source`:
+
+```json
+{
+  "reference": "Mosiah 3:17",
+  "source": "Book of Mormon",
+  "text": "And moreover, I say unto you, that there shall be no other name given…"
+}
+```
+
+Add as many entries as you like — your custom list takes priority over the
+built-in defaults. A seed-version marker (`.verses-seed-version` next to
+`verses.json`) lets new releases push expanded defaults; bump it to a large
+number locally if you want to lock your edits against future seed refreshes.
+
+To disable the verse card entirely, set `missionControl.includeVerseOfDay`
+to `false`.
+
+### Outlook calendar without Azure (no IT involvement)
+
+Microsoft removed AppleScript calendar access from Outlook for Mac, so the
+old "just check the toggle in Outlook" workaround no longer applies. If
+your org **also** blocks Azure AD app registration (which is needed for
+Microsoft Graph), there's still a way to get your Outlook calendar into
+Mission Control:
+
+1. In Outlook on the web ([outlook.office.com](https://outlook.office.com))
+   → **Settings ⚙️ → Calendar → Shared calendars → Publish a calendar**.
+   Pick your calendar, choose **"Can view all details"**, click **Publish**.
+2. Copy the **`.ics`** URL it gives you (not the HTML one).
+3. macOS **Calendar.app → File → New Calendar Subscription** → paste the URL.
+4. Set auto-refresh to 5 minutes, click OK. In Calendar.app's left sidebar,
+   make sure the new "Outlook" subscription's **checkbox is on**.
+5. **Mission Control → Refresh**. Your events flow in through EventKit,
+   no Graph, no IT ticket.
+
+If your org has also disabled calendar publishing, only Path 2 (Microsoft
+Graph) works — and only with IT cooperation. See the Graph section above.
+
+### Notifications history needs Full Disk Access
+
+macOS protects the notification database with FDA. To grant it:
+
+1. **System Settings → Privacy & Security → Full Disk Access**.
+2. Click **+** → choose `/Applications/BrotherPaul.app`.
+3. Toggle it on. Quit + relaunch BrotherPaul.
+
+If you'd rather skip notifications entirely, set
+`missionControl.includeNotifications: false`.
+
+---
+
 ## 4. Customize your work sessions
 
 Your sessions live in:
@@ -240,6 +423,31 @@ LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchService
 "$LSREG" -f /Applications/BrotherPaul.app
 open /Applications/BrotherPaul.app
 ```
+
+**Mission Control's Events section is empty.**
+Three independent fetchers feed Events: EventKit (Calendar.app), Outlook
+AppleScript, and Microsoft Graph. Look at the status line in the section
+header — it tells you which sources failed and why. Common cases:
+- *"Calendar: No events in the next 24h"* → EventKit has Calendar permission
+  but your calendar's events aren't visible. Open Calendar.app, confirm the
+  relevant calendars have their checkboxes turned **on**.
+- *"Outlook calendar … (errno -1751)"* → Microsoft removed the AppleScript
+  class. Set `includeOutlookCalendar: false`, use Graph or iCal subscribe
+  (section 3.5 above).
+- *"Graph token refresh failed"* → your refresh token was revoked (often
+  happens after password changes or admin actions). Re-run
+  `./bin/brpaul-graph-auth.sh` to get a fresh token.
+
+**The Verse of the Day says nothing or the wrong verse.**
+- *Card missing entirely:* `missionControl.includeVerseOfDay` is `false` in
+  your config, or your `verses.json` is empty / malformed (the Coordinator
+  falls back to defaults if the file fails to decode).
+- *Wrong wording:* the verse library is in
+  `~/Library/Application Support/BrotherPaul/verses.json`. Open it via 🧠
+  → **Edit Daily Verses…** and fix in place; next refresh picks it up.
+- *Want it to never change:* duplicate the same verse 132 times, or set a
+  one-element list, or hard-code your favorite at index `(day-of-year - 1)
+  mod count` and bump `.verses-seed-version` to a large number to keep it.
 
 **I want it to quit / I'm uninstalling.**
 🧠 → **Quit**. To fully remove:
