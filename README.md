@@ -262,3 +262,9 @@ rm -rf "$HOME/Library/Application Support/BrotherPaul"
 ```
 Then remove BrotherPaul from **System Settings → Privacy & Security → Accessibility**
 (and Notifications, if listed) and delete any Siri Shortcut you created.
+
+---
+
+## License
+
+[MIT](LICENSE) © 2026 Scott Soward
