@@ -1,0 +1,44 @@
+{
+  "hideOthersAfterLaunch": true,
+  "defaultMode": "Full",
+  "modes": [
+    {
+      "name": "Full",
+      "apps": [
+        "Microsoft Teams",
+        "Microsoft Outlook",
+        "Google Chrome",
+        "Slack"
+      ],
+      "urls": []
+    },
+    {
+      "name": "Deep Work",
+      "apps": [
+        "Google Chrome",
+        "Slack",
+        "Notion"
+      ],
+      "urls": []
+    },
+    {
+      "name": "Meetings",
+      "apps": [
+        "Microsoft Teams",
+        "Microsoft Outlook",
+        "zoom.us"
+      ],
+      "urls": []
+    },
+    {
+      "name": "Admin",
+      "apps": [
+        "Microsoft Outlook",
+        "Google Chrome"
+      ],
+      "urls": [
+        "https://mail.google.com"
+      ]
+    }
+  ]
+}

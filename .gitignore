@@ -1,0 +1,25 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# build-app.sh output
+build/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local config / scratch
+*.log
+.env
