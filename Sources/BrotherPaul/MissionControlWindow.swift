@@ -12,7 +12,7 @@ final class MissionControlWindow {
         if window == nil {
             let view = MissionControlView(coordinator: coordinator)
             let host = NSHostingController(rootView: view)
-            let w = NSWindow(contentViewController: host)
+            let w = KeyboardCloseWindow(contentViewController: host)
             w.title = "Mission Control"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             w.setContentSize(NSSize(width: 720, height: 600))

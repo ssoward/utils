@@ -305,7 +305,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             self?.onConfigChanged?()
         }
         let hosting = NSHostingController(rootView: view)
-        let window = NSWindow(contentViewController: hosting)
+        let window = KeyboardCloseWindow(contentViewController: hosting)
         window.title = "Brother Paul — Settings"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 520, height: 480))

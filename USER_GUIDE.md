@@ -212,7 +212,9 @@ it opens this way, Brother Paul waits a couple of seconds for your session
 apps to finish launching before bringing Mission Control to the front, so
 it lands on top of the launch storm instead of behind it. It's a regular
 window — click another app to bring that app forward; close Mission
-Control with **✕** when you're done.
+Control with **✕** or **⌘W** when you're done. (⌘Q does nothing here —
+Brother Paul is an accessory app with no main menu, so the system has
+nothing to bind ⌘Q to. Quit the whole app from 🧠 → **Quit**.)
 
 ### Setup
 
