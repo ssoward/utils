@@ -30,6 +30,18 @@ enum VerseOfTheDay {
         return verses[(day - 1) % verses.count]
     }
 
+    /// A random verse from the same pool `todays()` draws from, never equal to
+    /// the one passed in. Falls back to `todays()` if the pool is a single
+    /// verse.
+    static func randomVerse(excluding current: Verse?) -> Verse {
+        let verses = customVerses ?? defaultVerses
+        guard let current = current, verses.count > 1 else {
+            return verses.randomElement() ?? defaultVerses[0]
+        }
+        let pool = verses.filter { $0 != current }
+        return pool.randomElement() ?? verses[0]
+    }
+
     /// Path of the user-editable verse file. Created on demand by `installSeed()`.
     static var customFileURL: URL {
         ConfigManager.shared.configDirectory.appendingPathComponent("verses.json")

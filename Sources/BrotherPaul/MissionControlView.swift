@@ -233,6 +233,14 @@ struct MissionControlView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            Button {
+                coordinator.shuffleVerse()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.body)
+            }
+            .buttonStyle(.borderless)
+            .help("Show a different verse")
         }
         .padding(12)
         .background(

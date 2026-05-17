@@ -59,6 +59,14 @@ final class MissionControlCoordinator: ObservableObject {
         )
     }
 
+    /// Replace the currently-shown verse with a random different one from the
+    /// same pool. Ephemeral — a full refresh resets to today's verse.
+    func shuffleVerse() {
+        guard var current = digest else { return }
+        current.verse = VerseOfTheDay.randomVerse(excluding: current.verse)
+        digest = current
+    }
+
     private func mergeEvents(
         eventKit: SectionResult,
         outlook: SectionResult,
