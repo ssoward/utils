@@ -66,12 +66,14 @@ Set up a Siri Shortcut once:
 1. Open **Shortcuts.app** → **+**.
 2. Add the **Open URLs** action.
 3. URL: `brotherpaul://start`.
-4. Rename the shortcut to whatever you want Siri to recognize, e.g.
-   **Start Work** or **Brother Paul**.
-5. Make sure **System Settings → Apple Intelligence & Siri → Listen for "Siri"
+4. Name the shortcut **Brother Paul**. The shortcut's name **is** the
+   phrase Siri listens for, so pick whatever you want to say — but
+   "Brother Paul" matches the app and is the recommended default.
+5. Enable **Use with Siri** on the shortcut.
+6. Make sure **System Settings → Apple Intelligence & Siri → Listen for "Siri"
    or "Hey Siri"** is on.
 
-Now: "Hey Siri, Start Work."
+Now: "Hey Siri, Brother Paul."
 
 To trigger a specific mode by voice, make a second shortcut named
 **Deep Work** with URL `brotherpaul://start?mode=Deep%20Work`.
@@ -174,7 +176,7 @@ Brother Paul builds a one-pager:
    • …
 ```
 
-It also opens automatically when you fire "Start Work" (toggle that via
+It also opens automatically when you start a session (toggle that via
 `missionControl.openOnStartWork` if you'd rather it stayed quiet).
 
 ### Setup
@@ -363,7 +365,7 @@ URLs are opened in your default browser after the apps launch.
 ### Make it your default
 
 Set `"defaultMode": "Writing"` and now `brotherpaul://start` (and "Hey Siri,
-Start Work") launches the Writing session.
+Brother Paul") launches the Writing session.
 
 ---
 
@@ -407,9 +409,12 @@ Open `config.json` and confirm each `apps[]` entry matches the name shown in
 `/Applications/` (without `.app`). For weird names like `zoom.us`, copy the
 name exactly as it appears in Finder.
 
-**"Hey Siri, Start Work" doesn't trigger.**
-- The shortcut name **is** the trigger phrase — name it exactly what you want
-  to say.
+**"Hey Siri, Brother Paul" doesn't trigger.**
+- A Shortcut named **Brother Paul** must exist in your Shortcuts library
+  (Shortcuts.app → list it with `shortcuts list` in Terminal). The shortcut
+  name **is** the trigger phrase — if yours is named something else (e.g.
+  "Start Work"), say that name instead, or rename it to "Brother Paul".
+- The shortcut must have **Use with Siri** enabled.
 - In **System Settings → Apple Intelligence & Siri**, "Listen for" must be on.
 - The shortcut must be in your **Shortcuts library**, not in a folder Siri
   doesn't search.
