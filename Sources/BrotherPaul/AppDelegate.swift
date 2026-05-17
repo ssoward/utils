@@ -103,7 +103,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppLauncher.launch(mode: mode, hideOthers: config.hideOthersAfterLaunch)
 
         if config.missionControl.openOnStartWork {
-            Task { @MainActor in self.missionControl.show() }
+            // Launched apps activate themselves over ~1-3s and would bury an
+            // immediately-shown Mission Control window. Open it after the storm
+            // settles so it lands on top, then behaves as a normal window the
+            // user can send behind by clicking another app.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                self.missionControl.show()
+            }
         }
     }
 }

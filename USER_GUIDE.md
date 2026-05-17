@@ -177,7 +177,12 @@ Brother Paul builds a one-pager:
 ```
 
 It also opens automatically when you start a session (toggle that via
-`missionControl.openOnStartWork` if you'd rather it stayed quiet).
+`missionControl.openOnStartWork` if you'd rather it stayed quiet). When
+it opens this way, Brother Paul waits a couple of seconds for your session
+apps to finish launching before bringing Mission Control to the front, so
+it lands on top of the launch storm instead of behind it. It's a regular
+window — click another app to bring that app forward; close Mission
+Control with **✕** when you're done.
 
 ### Setup
 
