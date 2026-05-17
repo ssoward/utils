@@ -48,7 +48,10 @@ Click the brain icon in the menu bar:
 - **End Full Session** — gracefully quit every app in the Full mode (apps
   with unsaved work get their normal save prompt; Brother Paul stays
   running)
-- **Mission Control…** (`⌘M`) — open the daily digest window
+- **Mission Control…** (`⌘M`) — open the daily digest window. Close
+  Mission Control or the Settings window with `⌘W`. (`⌘Q` does nothing
+  on these windows — Brother Paul is an accessory app with no main menu;
+  quit the whole app from this menu's **Quit** item.)
 - **Modes ▸** — pick Deep Work, Meetings, Admin, or any custom mode
 - **Hide Other Apps After Launch** — toggle "hide others after launch"
 - **Snap Focused Window ▸** — snap to half / quarter / maximize / center;
@@ -141,6 +144,20 @@ Setup:
 
 Now saying "Brother Paul" runs the default mode every time, even when the app
 is already in the menu bar.
+
+### End-session Shortcut
+
+Make a second shortcut for the mirror action:
+
+1. Shortcuts.app → **+** (or right-click your start shortcut → **Duplicate**).
+2. Action: **Open URLs** → `brotherpaul://stop`.
+3. Name it whatever you'll say — short and distinctive helps Siri:
+   **Ciao**, **Wrap up**, **Good night**. The literal name is the trigger
+   phrase, so spell it the way Siri is likely to hear you.
+4. Enable **Use with Siri**.
+5. Verify: `shortcuts list` in Terminal.
+
+Now: "Hey Siri, Ciao" gracefully quits every app in the Full mode.
 
 ### CLI alternative
 

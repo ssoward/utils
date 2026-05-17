@@ -108,9 +108,22 @@ re-start later.
 
 ### Voice
 
-Make a second Siri Shortcut named whatever you want to say (e.g.
-**Good night** or **Wrap up**) with the URL `brotherpaul://stop`. Same
-setup as the start shortcut.
+Make a second Siri Shortcut for the end action, paralleling the start
+shortcut you made above:
+
+1. Open **Shortcuts.app** → **+** (or right-click your existing start
+   shortcut → **Duplicate** if you'd rather edit a copy).
+2. Add an **Open URLs** action with URL `brotherpaul://stop`.
+3. Name the shortcut whatever you'll actually say. Short, distinctive
+   words work best — examples that have worked in the wild:
+   **Ciao**, **Wrap up**, **Good night**, **Sign off**. The shortcut's
+   **literal name is the Siri trigger phrase**, so spell it the way Siri
+   is likely to transcribe what you say. If Siri keeps mishearing,
+   rename the shortcut to match its transcription.
+4. Enable **Use with Siri** on the shortcut (the ⓘ details panel).
+5. Confirm it appears: `shortcuts list` in Terminal.
+
+Now: "Hey Siri, Ciao" (or whatever you named it) quits your work apps.
 
 ### Terminal
 
