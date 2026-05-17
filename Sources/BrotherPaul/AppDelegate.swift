@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - URL scheme: brotherpaul://start?mode=Deep%20Work
+    // MARK: - URL scheme: brotherpaul://start?mode=Deep%20Work or brotherpaul://stop
 
     @objc func handleURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
         guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
@@ -65,28 +65,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard action.caseInsensitiveCompare("start") == .orderedSame else {
-            NSLog("BrotherPaul: ignoring URL with unknown action '%@'", action)
-            return
-        }
-
         let modeFromQuery = url.queryItems?.first(where: { $0.name.caseInsensitiveCompare("mode") == .orderedSame })?.value
-        launch(modeName: modeFromQuery)
+
+        switch action.lowercased() {
+        case "start":
+            launch(modeName: modeFromQuery)
+        case "stop", "end":
+            endSession(modeName: modeFromQuery)
+        default:
+            NSLog("BrotherPaul: ignoring URL with unknown action '%@'", action)
+        }
     }
 
-    // MARK: - CLI: BrotherPaul --start [--mode "Name"]
+    // MARK: - CLI: BrotherPaul --start [--mode "Name"] or --stop [--mode "Name"]
 
     private func handleLaunchArguments() {
         let args = CommandLine.arguments
-        guard args.contains("--start") else { return }
+        let modeArg: String? = {
+            if let idx = args.firstIndex(of: "--mode"), idx + 1 < args.count {
+                return args[idx + 1]
+            }
+            return nil
+        }()
 
-        let modeArg: String?
-        if let idx = args.firstIndex(of: "--mode"), idx + 1 < args.count {
-            modeArg = args[idx + 1]
-        } else {
-            modeArg = nil
+        if args.contains("--start") {
+            launch(modeName: modeArg)
+        } else if args.contains("--stop") {
+            endSession(modeName: modeArg)
         }
-        launch(modeName: modeArg)
     }
 
     // MARK: - Shared launch entry point
@@ -112,5 +118,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.missionControl.show()
             }
         }
+    }
+
+    // MARK: - Shared end-session entry point
+
+    func endSession(modeName: String?) {
+        let config = ConfigManager.shared.config
+        let requested = modeName ?? config.defaultMode
+
+        guard let mode = config.mode(named: requested) else {
+            NSLog("BrotherPaul: unknown mode '%@'", requested)
+            return
+        }
+
+        AppLauncher.end(mode: mode)
     }
 }

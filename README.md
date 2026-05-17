@@ -45,6 +45,9 @@ with the default apps and modes (Full / Deep Work / Meetings / Admin).
 Click the brain icon in the menu bar:
 
 - **Start Full Work Session** (`⌘S`) — launch every app in the Full mode
+- **End Full Session** — gracefully quit every app in the Full mode (apps
+  with unsaved work get their normal save prompt; Brother Paul stays
+  running)
 - **Mission Control…** (`⌘M`) — open the daily digest window
 - **Modes ▸** — pick Deep Work, Meetings, Admin, or any custom mode
 - **Hide Other Apps After Launch** — toggle "hide others after launch"
@@ -120,6 +123,8 @@ a launch whether the app is already running or not.
 URLs:
 - `brotherpaul://start` — runs the default mode
 - `brotherpaul://start?mode=Deep%20Work` — runs a named mode
+- `brotherpaul://stop` — gracefully quits every app in the default mode
+- `brotherpaul://stop?mode=Meetings` — quits a named mode's apps
 
 Setup:
 1. Build and install the app:
@@ -144,9 +149,12 @@ For testing from the terminal:
 ```bash
 open "brotherpaul://start"
 open "brotherpaul://start?mode=Meetings"
+open "brotherpaul://stop"
+open "brotherpaul://stop?mode=Meetings"
 
 # Cold-launch form (only fires the launcher on first startup):
 open -a BrotherPaul --args --start --mode "Deep Work"
+open -a BrotherPaul --args --stop  --mode "Deep Work"
 ```
 
 ---

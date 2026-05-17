@@ -44,6 +44,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         startItem.target = self
         menu.addItem(startItem)
 
+        let endTitle = "End \(config.defaultMode) Session"
+        let endItem = NSMenuItem(
+            title: endTitle,
+            action: #selector(endDefault),
+            keyEquivalent: ""
+        )
+        endItem.target = self
+        menu.addItem(endItem)
+
         let mcItem = NSMenuItem(
             title: "Mission Control…",
             action: #selector(showMissionControl),
@@ -211,6 +220,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             mode: mode,
             hideOthers: ConfigManager.shared.config.hideOthersAfterLaunch
         )
+    }
+
+    @objc private func endDefault() {
+        let config = ConfigManager.shared.config
+        let mode = config.mode(named: config.defaultMode) ?? config.modes.first
+        guard let mode = mode else { return }
+        AppLauncher.end(mode: mode)
     }
 
     @objc private func toggleHideOthers() {

@@ -22,7 +22,39 @@ enum AppLauncher {
             }
         }
 
-        notify(mode: mode)
+        notify(mode: mode, verb: "started")
+    }
+
+    /// Inverse of `launch`: for each app listed in the mode, find any matching
+    /// running NSRunningApplication and send it a graceful Quit. Apps with
+    /// unsaved work get their normal save prompt. Brother Paul never quits
+    /// itself.
+    static func end(mode: LaunchMode) {
+        NSLog("BrotherPaul: ending mode '%@' (%d configured app(s))", mode.name, mode.apps.count)
+
+        let myBundle = Bundle.main.bundleIdentifier
+        let running = NSWorkspace.shared.runningApplications
+
+        for appName in mode.apps {
+            let matches = running.filter { app in
+                if app.bundleIdentifier == myBundle { return false }
+                if let bid = app.bundleIdentifier,
+                   bid.caseInsensitiveCompare(appName) == .orderedSame { return true }
+                if let name = app.localizedName,
+                   name.caseInsensitiveCompare(appName) == .orderedSame { return true }
+                return false
+            }
+            if matches.isEmpty {
+                NSLog("BrotherPaul: '%@' not running, nothing to quit", appName)
+                continue
+            }
+            for app in matches {
+                NSLog("BrotherPaul: quitting %@", app.localizedName ?? appName)
+                _ = app.terminate()
+            }
+        }
+
+        notify(mode: mode, verb: "ended")
     }
 
     private static func launchApp(named name: String) {
@@ -69,12 +101,12 @@ enum AppLauncher {
         }
     }
 
-    private static func notify(mode: LaunchMode) {
+    private static func notify(mode: LaunchMode, verb: String) {
         // UNUserNotificationCenter requires a real .app bundle. When running via
         // `swift run` (bare executable, no bundle identifier) it throws an NSException,
         // so we log instead and only post a real banner once installed as BrotherPaul.app.
         guard Bundle.main.bundleIdentifier != nil else {
-            NSLog("BrotherPaul: %@ session started (no bundle — skipping notification)", mode.name)
+            NSLog("BrotherPaul: %@ session %@ (no bundle — skipping notification)", mode.name, verb)
             return
         }
 
@@ -83,7 +115,8 @@ enum AppLauncher {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "Brother Paul"
-            content.body = "Good morning. \(mode.name) session started."
+            let prefix = verb == "started" ? "Good morning. " : ""
+            content.body = "\(prefix)\(mode.name) session \(verb)."
             content.sound = .default
 
             let request = UNNotificationRequest(

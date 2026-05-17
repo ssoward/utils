@@ -95,6 +95,36 @@ Handy for `cron` jobs, scripts, or one-off testing.
 
 ---
 
+## 2.5 End your work session
+
+The mirror of starting. Brother Paul will send a graceful Quit to every
+app listed in the chosen mode — apps with unsaved work get their normal
+"Save changes?" prompt; Brother Paul itself stays running so you can
+re-start later.
+
+### Click
+
+🧠 → **End Full Session** (named after your default mode).
+
+### Voice
+
+Make a second Siri Shortcut named whatever you want to say (e.g.
+**Good night** or **Wrap up**) with the URL `brotherpaul://stop`. Same
+setup as the start shortcut.
+
+### Terminal
+
+```bash
+open brotherpaul://stop
+open "brotherpaul://stop?mode=Meetings"
+```
+
+Note: apps you opened by hand that aren't in any mode are untouched.
+Mission Control isn't closed automatically — dismiss it with **✕** if
+you don't want it lingering.
+
+---
+
 ## 3. Snap any window
 
 Once Accessibility is granted, snap works for **any app's focused window**.
