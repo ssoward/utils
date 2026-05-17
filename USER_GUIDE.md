@@ -229,6 +229,14 @@ Control with **✕** or **⌘W** when you're done. (⌘Q does nothing here —
 Brother Paul is an accessory app with no main menu, so the system has
 nothing to bind ⌘Q to. Quit the whole app from 🧠 → **Quit**.)
 
+### Quick Links
+
+Anything you want one click away — your gratitude journal, devotional,
+oncall dashboard, family calendar — add to `missionControl.quickLinks`
+in `config.json` as `{ label, url }` entries. They render as a section
+right under the verse card. Click a row → it opens in your default
+browser. Leave the array empty to hide the section entirely.
+
 ### Setup
 
 Each section asks for its own permission the first time it runs. You don't

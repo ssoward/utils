@@ -291,6 +291,29 @@ you've hand-edited the file and want to lock your edits in.
 
 Disable the card entirely: `missionControl.includeVerseOfDay: false`.
 
+### Quick Links
+
+Add static links you want one click away — gratitude journals, devotional
+sites, dashboards, whatever you open every morning. Add them under
+`missionControl.quickLinks` in `config.json`:
+
+```json
+"quickLinks": [
+  {
+    "label": "Daily Gratitude",
+    "url": "https://docs.google.com/spreadsheets/d/.../edit"
+  },
+  {
+    "label": "Engineering dashboard",
+    "url": "https://grafana.example.com/d/abc123"
+  }
+]
+```
+
+They appear as a **Quick Links** section in Mission Control, right under
+the verse card. Click a row → opens in your default browser. Leave the
+array empty (or omit the field) to hide the section.
+
 ### Outlook calendar without Azure: iCal subscribe
 
 If your org blocks both Microsoft Graph app registration **and** legacy

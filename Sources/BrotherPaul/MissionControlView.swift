@@ -7,6 +7,7 @@ struct MissionControlView: View {
     @AppStorage("mc.expand.events")        private var expandEvents = true
     @AppStorage("mc.expand.emails")        private var expandEmails = true
     @AppStorage("mc.expand.notifications") private var expandNotifications = true
+    @AppStorage("mc.expand.links")         private var expandLinks = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -19,6 +20,7 @@ struct MissionControlView: View {
                         if let verse = digest.verse {
                             verseCard(verse)
                         }
+                        quickLinksSection()
                         section(
                             title: "Upcoming Events",
                             icon: "calendar",
@@ -47,12 +49,12 @@ struct MissionControlView: View {
                 HStack(spacing: 12) {
                     Button("Expand all") {
                         withAnimation(.easeInOut(duration: 0.18)) {
-                            expandEvents = true; expandEmails = true; expandNotifications = true
+                            expandEvents = true; expandEmails = true; expandNotifications = true; expandLinks = true
                         }
                     }
                     Button("Collapse all") {
                         withAnimation(.easeInOut(duration: 0.18)) {
-                            expandEvents = false; expandEmails = false; expandNotifications = false
+                            expandEvents = false; expandEmails = false; expandNotifications = false; expandLinks = false
                         }
                     }
                     Spacer()
@@ -211,6 +213,68 @@ struct MissionControlView: View {
     private func priorityDot(_ priority: Int) -> some View {
         let color: Color = priority >= 90 ? .red : priority >= 70 ? .orange : priority >= 50 ? .blue : .gray
         return Circle().fill(color).frame(width: 8, height: 8).padding(.top, 6)
+    }
+
+    @ViewBuilder
+    private func quickLinksSection() -> some View {
+        let links = ConfigManager.shared.config.missionControl.quickLinks
+        if !links.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        expandLinks.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: expandLinks ? "chevron.down" : "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 12)
+                        Image(systemName: "link").foregroundStyle(.tint)
+                        Text("Quick Links").font(.headline)
+                        Text("\(links.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if expandLinks {
+                    VStack(spacing: 6) {
+                        ForEach(links) { link in
+                            quickLinkRow(link)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func quickLinkRow(_ link: QuickLink) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.up.right.square")
+                .foregroundStyle(.tint)
+            Text(link.label)
+                .font(.body)
+                .lineLimit(1)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let url = URL(string: link.url) { NSWorkspace.shared.open(url) }
+        }
     }
 
     private func relative(_ date: Date) -> String {

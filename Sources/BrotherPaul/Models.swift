@@ -28,6 +28,13 @@ struct GraphConfig: Codable, Equatable {
     }
 }
 
+struct QuickLink: Codable, Identifiable, Hashable {
+    var label: String
+    var url: String
+
+    var id: String { url }
+}
+
 struct GmailConfig: Codable, Equatable {
     /// OAuth client ID from your Google Cloud Console "OAuth 2.0 Client ID"
     /// (type: "Desktop app"). Leave empty to disable Gmail.
@@ -58,6 +65,8 @@ struct MissionControlConfig: Codable {
     var notificationAppBlocklist: [String]
     /// Auto-open Mission Control whenever a work session starts.
     var openOnStartWork: Bool
+    /// Static links rendered as a section in Mission Control.
+    var quickLinks: [QuickLink]
     var gmail: GmailConfig
     var graph: GraphConfig
 
@@ -73,13 +82,14 @@ struct MissionControlConfig: Codable {
         vipSenders: [],
         notificationAppBlocklist: [],
         openOnStartWork: true,
+        quickLinks: [],
         gmail: GmailConfig(),
         graph: GraphConfig()
     )
 
     enum CodingKeys: String, CodingKey {
         case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGmail, includeNotifications, includeVerseOfDay
-        case lookbackHours, vipSenders, notificationAppBlocklist, openOnStartWork, gmail, graph
+        case lookbackHours, vipSenders, notificationAppBlocklist, openOnStartWork, quickLinks, gmail, graph
     }
 
     init(
@@ -94,6 +104,7 @@ struct MissionControlConfig: Codable {
         vipSenders: [String],
         notificationAppBlocklist: [String],
         openOnStartWork: Bool,
+        quickLinks: [QuickLink],
         gmail: GmailConfig,
         graph: GraphConfig
     ) {
@@ -108,6 +119,7 @@ struct MissionControlConfig: Codable {
         self.vipSenders = vipSenders
         self.notificationAppBlocklist = notificationAppBlocklist
         self.openOnStartWork = openOnStartWork
+        self.quickLinks = quickLinks
         self.gmail = gmail
         self.graph = graph
     }
@@ -126,6 +138,7 @@ struct MissionControlConfig: Codable {
         vipSenders = try c.decodeIfPresent([String].self, forKey: .vipSenders) ?? d.vipSenders
         notificationAppBlocklist = try c.decodeIfPresent([String].self, forKey: .notificationAppBlocklist) ?? d.notificationAppBlocklist
         openOnStartWork = try c.decodeIfPresent(Bool.self, forKey: .openOnStartWork) ?? d.openOnStartWork
+        quickLinks = try c.decodeIfPresent([QuickLink].self, forKey: .quickLinks) ?? d.quickLinks
         gmail = try c.decodeIfPresent(GmailConfig.self, forKey: .gmail) ?? d.gmail
         graph = try c.decodeIfPresent(GraphConfig.self, forKey: .graph) ?? d.graph
     }
