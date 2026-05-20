@@ -64,59 +64,69 @@ function writeMessage(msg) {
 }
 
 function handlePrompt(prompt) {
-  const args = ['-p', '--output-format', 'stream-json', '--verbose', prompt];
+  return new Promise((resolve) => {
+    const args = ['-p', '--output-format', 'stream-json', '--verbose', prompt];
 
-  const child = spawn('claude', args, {
-    stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env }
-  });
+    const child = spawn('claude', args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env }
+    });
 
-  let buffer = '';
-  let sentAnyChunks = false;
+    let buffer = '';
+    let sentAnyChunks = false;
+    let hadError = false;
 
-  child.stdout.on('data', (data) => {
-    buffer += data.toString();
-    const lines = buffer.split('\n');
-    buffer = lines.pop();
+    child.stdout.on('data', (data) => {
+      buffer += data.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const event = JSON.parse(line);
-        if (event.type === 'assistant' && event.message?.content) {
-          for (const block of event.message.content) {
-            if (block.type === 'text' && block.text) {
-              sentAnyChunks = true;
-              writeMessage({ type: 'chunk', text: block.text });
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const event = JSON.parse(line);
+          if (event.type === 'assistant' && event.message?.content) {
+            for (const block of event.message.content) {
+              if (block.type === 'text' && block.text) {
+                sentAnyChunks = true;
+                writeMessage({ type: 'chunk', text: block.text });
+              }
             }
           }
+          if (event.type === 'result' && event.result && !sentAnyChunks) {
+            writeMessage({ type: 'chunk', text: event.result });
+          }
+        } catch {
+          // Not JSON or irrelevant line
         }
-        if (event.type === 'result' && event.result && !sentAnyChunks) {
-          writeMessage({ type: 'chunk', text: event.result });
-        }
-      } catch {
-        // Not JSON or irrelevant line
       }
-    }
-  });
+    });
 
-  child.stderr.on('data', (data) => {
-    process.stderr.write(data);
-  });
+    child.stderr.on('data', (data) => {
+      process.stderr.write(data);
+    });
 
-  child.on('error', (err) => {
-    let errorMsg = 'Something went wrong. Try again.';
-    if (err.code === 'ENOENT') {
-      errorMsg = 'Claude CLI not found. Install Claude Code first.';
-    }
-    writeMessage({ type: 'error', error: errorMsg });
-  });
+    child.on('error', (err) => {
+      hadError = true;
+      let errorMsg = 'Something went wrong. Try again.';
+      if (err.code === 'ENOENT') {
+        errorMsg = 'Claude CLI not found. Install Claude Code first.';
+      }
+      writeMessage({ type: 'error', error: errorMsg });
+      resolve();
+    });
 
-  child.on('close', (code) => {
-    if (code !== 0 && code !== null) {
-      writeMessage({ type: 'error', error: 'Claude exited with an error. Check your login with `claude` in the terminal.' });
-    }
-    writeMessage({ type: 'done' });
+    child.on('close', (code) => {
+      if (hadError) {
+        resolve();
+        return;
+      }
+      if (code !== 0 && code !== null) {
+        writeMessage({ type: 'error', error: 'Claude exited with an error. Check your login with `claude` in the terminal.' });
+      }
+      writeMessage({ type: 'done' });
+      resolve();
+    });
   });
 }
 
@@ -128,7 +138,7 @@ async function main() {
         process.exit(0);
       }
       if (message.type === 'prompt') {
-        handlePrompt(message.prompt);
+        await handlePrompt(message.prompt);
       }
     } catch (e) {
       writeMessage({ type: 'error', error: e.message });
