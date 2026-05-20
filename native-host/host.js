@@ -6,7 +6,35 @@
 // Protocol: Messages are framed with a 4-byte little-endian length prefix followed
 // by UTF-8 JSON. Both reads (stdin) and writes (stdout) use this framing.
 
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
+const path = require('path');
+
+// Resolve the full path to claude CLI at startup.
+// Chrome launches native hosts with a minimal PATH that won't include
+// /opt/homebrew/bin or other user-installed locations.
+let claudePath = 'claude';
+try {
+  // Try common locations first, then fall back to shell resolution
+  const candidates = [
+    '/opt/homebrew/bin/claude',
+    '/usr/local/bin/claude',
+    path.join(process.env.HOME || '', '.npm-global/bin/claude'),
+  ];
+  const fs = require('fs');
+  for (const p of candidates) {
+    try {
+      fs.accessSync(p, fs.constants.X_OK);
+      claudePath = p;
+      break;
+    } catch { /* not found, try next */ }
+  }
+  // If none of the candidates worked, try shell resolution
+  if (claudePath === 'claude') {
+    claudePath = execSync('which claude 2>/dev/null || echo claude', { encoding: 'utf8' }).trim();
+  }
+} catch {
+  // Fall through with 'claude' — will get ENOENT error with a clear message
+}
 
 function readMessage() {
   return new Promise((resolve, reject) => {
@@ -67,7 +95,7 @@ function handlePrompt(prompt) {
   return new Promise((resolve) => {
     const args = ['-p', '--output-format', 'stream-json', '--verbose', prompt];
 
-    const child = spawn('claude', args, {
+    const child = spawn(claudePath, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env }
     });
