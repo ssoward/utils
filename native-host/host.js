@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+
+// ChromeCC Native Messaging Host
+// Bridges Chrome extension <-> claude CLI via Chrome Native Messaging protocol
+//
+// Protocol: Messages are framed with a 4-byte little-endian length prefix followed
+// by UTF-8 JSON. Both reads (stdin) and writes (stdout) use this framing.
+
+const { spawn } = require('child_process');
+
+function readMessage() {
+  return new Promise((resolve, reject) => {
+    const headerBuf = Buffer.alloc(4);
+    let headerBytesRead = 0;
+
+    function onReadable() {
+      while (headerBytesRead < 4) {
+        const chunk = process.stdin.read(4 - headerBytesRead);
+        if (chunk === null) return;
+        chunk.copy(headerBuf, headerBytesRead);
+        headerBytesRead += chunk.length;
+      }
+
+      process.stdin.removeListener('readable', onReadable);
+      const msgLen = headerBuf.readUInt32LE(0);
+
+      if (msgLen === 0) {
+        resolve(null);
+        return;
+      }
+
+      let body = Buffer.alloc(0);
+      function onBodyReadable() {
+        while (body.length < msgLen) {
+          const remaining = msgLen - body.length;
+          const chunk = process.stdin.read(remaining);
+          if (chunk === null) return;
+          body = Buffer.concat([body, chunk]);
+        }
+        process.stdin.removeListener('readable', onBodyReadable);
+        try {
+          resolve(JSON.parse(body.toString('utf8')));
+        } catch (e) {
+          reject(new Error('Invalid JSON: ' + e.message));
+        }
+      }
+
+      process.stdin.on('readable', onBodyReadable);
+      onBodyReadable();
+    }
+
+    process.stdin.on('readable', onReadable);
+    onReadable();
+  });
+}
+
+function writeMessage(msg) {
+  const json = JSON.stringify(msg);
+  const buf = Buffer.from(json, 'utf8');
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(buf.length, 0);
+  process.stdout.write(header);
+  process.stdout.write(buf);
+}
+
+function handlePrompt(prompt) {
+  const args = ['-p', '--output-format', 'stream-json', '--verbose', prompt];
+
+  const child = spawn('claude', args, {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env }
+  });
+
+  let buffer = '';
+  let sentAnyChunks = false;
+
+  child.stdout.on('data', (data) => {
+    buffer += data.toString();
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const event = JSON.parse(line);
+        if (event.type === 'assistant' && event.message?.content) {
+          for (const block of event.message.content) {
+            if (block.type === 'text' && block.text) {
+              sentAnyChunks = true;
+              writeMessage({ type: 'chunk', text: block.text });
+            }
+          }
+        }
+        if (event.type === 'result' && event.result && !sentAnyChunks) {
+          writeMessage({ type: 'chunk', text: event.result });
+        }
+      } catch {
+        // Not JSON or irrelevant line
+      }
+    }
+  });
+
+  child.stderr.on('data', (data) => {
+    process.stderr.write(data);
+  });
+
+  child.on('error', (err) => {
+    let errorMsg = 'Something went wrong. Try again.';
+    if (err.code === 'ENOENT') {
+      errorMsg = 'Claude CLI not found. Install Claude Code first.';
+    }
+    writeMessage({ type: 'error', error: errorMsg });
+  });
+
+  child.on('close', (code) => {
+    if (code !== 0 && code !== null) {
+      writeMessage({ type: 'error', error: 'Claude exited with an error. Check your login with `claude` in the terminal.' });
+    }
+    writeMessage({ type: 'done' });
+  });
+}
+
+async function main() {
+  while (true) {
+    try {
+      const message = await readMessage();
+      if (message === null) {
+        process.exit(0);
+      }
+      if (message.type === 'prompt') {
+        handlePrompt(message.prompt);
+      }
+    } catch (e) {
+      writeMessage({ type: 'error', error: e.message });
+      process.exit(1);
+    }
+  }
+}
+
+main();
