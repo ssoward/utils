@@ -93,40 +93,27 @@ function writeMessage(msg) {
 
 function handlePrompt(prompt) {
   return new Promise((resolve) => {
-    const args = ['-p', '--output-format', 'stream-json', '--verbose', prompt];
+    // Use plain text mode and pipe prompt via stdin.
+    // Passing prompt as a CLI argument can cause issues with special characters
+    // and shell escaping. Piping via stdin is more reliable.
+    const args = ['-p', '--output-format', 'text'];
 
     const child = spawn(claudePath, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env }
     });
 
-    let buffer = '';
-    let sentAnyChunks = false;
     let hadError = false;
 
-    child.stdout.on('data', (data) => {
-      buffer += data.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
+    // Write prompt to stdin and close it
+    child.stdin.write(prompt);
+    child.stdin.end();
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const event = JSON.parse(line);
-          if (event.type === 'assistant' && event.message?.content) {
-            for (const block of event.message.content) {
-              if (block.type === 'text' && block.text) {
-                sentAnyChunks = true;
-                writeMessage({ type: 'chunk', text: block.text });
-              }
-            }
-          }
-          if (event.type === 'result' && event.result && !sentAnyChunks) {
-            writeMessage({ type: 'chunk', text: event.result });
-          }
-        } catch {
-          // Not JSON or irrelevant line
-        }
+    // Stream stdout chunks directly to the extension
+    child.stdout.on('data', (data) => {
+      const text = data.toString();
+      if (text) {
+        writeMessage({ type: 'chunk', text: text });
       }
     });
 
