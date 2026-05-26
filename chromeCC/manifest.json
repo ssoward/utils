@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "ChromeCC",
+  "version": "0.1.0",
+  "description": "Chat with Claude about any page using your Claude Code login",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "nativeMessaging"
+  ],
+  "side_panel": {
+    "default_path": "extension/sidepanel.html"
+  },
+  "background": {
+    "service_worker": "extension/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["extension/content.js"]
+    }
+  ],
+  "action": {
+    "default_title": "ChromeCC"
+  },
+  "icons": {
+    "16": "extension/icons/icon16.png",
+    "48": "extension/icons/icon48.png",
+    "128": "extension/icons/icon128.png"
+  }
+}
