@@ -1,51 +1,3 @@
-export interface SystemStatus {
-  cpu: CpuInfo;
-  memory: MemoryInfo;
-  disk: DiskInfo;
-  battery: BatteryInfo;
-  uptime: string;
-  hostname: string;
-  timestamp: string;
-}
-
-export interface CpuInfo {
-  userPercent: number;
-  systemPercent: number;
-  idlePercent: number;
-  loadAvg: [number, number, number];
-}
-
-export interface MemoryInfo {
-  totalGB: number;
-  usedGB: number;
-  freeGB: number;
-  usedPercent: number;
-}
-
-export interface DiskInfo {
-  filesystem: string;
-  sizeGB: string;
-  usedGB: string;
-  availGB: string;
-  usedPercent: number;
-  mountPoint: string;
-}
-
-export interface BatteryInfo {
-  percent: number;
-  charging: boolean;
-  timeRemaining: string;
-  source: string;
-}
-
-export interface ClaudeHookEvent {
-  type: string;
-  sessionId?: string;
-  message?: string;
-  timestamp: string;
-  [key: string]: unknown;
-}
-
 export interface NotifyPayload {
   message: string;
   channel?: string;
@@ -92,4 +44,38 @@ export interface ReplyPayload {
   text: string;
   threadTs?: string;
   blocks?: unknown[];
+}
+
+// --- Agent types ---
+
+export interface TaskRequest {
+  prompt: string;
+  workingDir?: string;
+  conversationHistory?: string;
+  threadTs: string;
+  channel: string;
+  messageTs: string;
+  userId: string;
+}
+
+export interface TaskResult {
+  output: string;
+  exitCode: number;
+  timedOut: boolean;
+  durationMs: number;
+}
+
+export interface AgentSession {
+  threadTs: string;
+  channel: string;
+  createdAt: string;
+  lastActiveAt: string;
+  workingDir: string;
+  exchanges: AgentExchange[];
+}
+
+export interface AgentExchange {
+  role: 'user' | 'agent';
+  content: string;
+  timestamp: string;
 }

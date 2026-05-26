@@ -8,10 +8,6 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function optionalEnv(name: string, fallback: string): string {
-  return process.env[name] || fallback;
-}
-
 function optionalInt(name: string, fallback: number): number {
   const val = process.env[name];
   return val ? parseInt(val, 10) : fallback;
@@ -24,13 +20,14 @@ export const config = {
     signingSecret: requireEnv('SLACK_SIGNING_SECRET'),
     channelId: process.env.SLACK_CHANNEL_ID || '',
   },
-  allowedUserId: process.env.ALLOWED_USER_ID || '',
-  hookPort: optionalInt('HOOK_PORT', 3847),
   cliBridgePort: optionalInt('CLI_BRIDGE_PORT', 3848),
-  schedulerIntervalMinutes: optionalInt('SCHEDULER_INTERVAL_MINUTES', 30),
   maxQueueMessages: optionalInt('MAX_QUEUE_MESSAGES', 200),
-  thresholds: {
-    batteryLow: optionalInt('BATTERY_LOW_THRESHOLD', 20),
-    diskUsageHigh: optionalInt('DISK_USAGE_HIGH_THRESHOLD', 90),
+  agent: {
+    workingDir: process.env.AGENT_WORKING_DIR || process.cwd(),
+    maxTurns: optionalInt('AGENT_MAX_TURNS', 25),
+    timeoutMs: optionalInt('AGENT_TIMEOUT_MS', 300000),
+    allowedTools: process.env.AGENT_ALLOWED_TOOLS || 'Bash,Read,Write,Edit,Glob,Grep',
+    model: process.env.AGENT_MODEL || '',
+    sessionTtlHours: optionalInt('AGENT_SESSION_TTL_HOURS', 24),
   },
 } as const;
