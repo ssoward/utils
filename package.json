@@ -1,7 +1,7 @@
 {
   "name": "slack-bot",
   "version": "1.0.0",
-  "description": "Slack bot for Mac status monitoring via Socket Mode",
+  "description": "Slack-driven Claude Code agent — personal coding assistant controlled via Slack",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
