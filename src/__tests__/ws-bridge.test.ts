@@ -3,10 +3,10 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
-import { startCliBridge } from '../notifier/cli-bridge.js';
+import { startCliBridge } from '../slack/cli-bridge.js';
 import { registerSession, unregisterSession } from '../session-registry/registry.js';
 import { clearQueue } from '../message-queue/queue.js';
-import { pushToClients, _getClients } from '../notifier/ws-bridge.js';
+import { pushToClients, _getClients } from '../slack/ws-bridge.js';
 import type { SlackIncomingMessage } from '../types.js';
 
 const TEST_PORT = 39849;

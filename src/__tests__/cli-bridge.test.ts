@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { startCliBridge } from '../notifier/cli-bridge.js';
+import { startCliBridge } from '../slack/cli-bridge.js';
 import { enqueueMessage, clearQueue } from '../message-queue/queue.js';
 import { unregisterSession } from '../session-registry/registry.js';
 
@@ -203,31 +203,6 @@ describe('cli-bridge HTTP endpoints', () => {
     // Note: Actual Slack send requires valid credentials; we test validation only
   });
 
-  describe('POST /status', () => {
-    it('should return 400 for invalid JSON body', async () => {
-      // Send a request with a body that is not valid JSON
-      const { status } = await new Promise<{ status: number; data: Record<string, unknown> }>((resolve, reject) => {
-        const url = new URL('/status', BASE);
-        const req = http.request(
-          { method: 'POST', hostname: url.hostname, port: url.port, path: url.pathname, headers: { 'Content-Type': 'application/json' } },
-          (res) => {
-            let raw = '';
-            res.on('data', (chunk: Buffer) => (raw += chunk.toString()));
-            res.on('end', () => resolve({ status: res.statusCode!, data: JSON.parse(raw) }));
-          },
-        );
-        req.on('error', reject);
-        req.write('not json');
-        req.end();
-      });
-      expect(status).toBe(400);
-    });
-
-    // Note: Actual status post requires Slack credentials to send; the route itself
-    // is tested for reachability via the invalid JSON test above. A full integration
-    // test would need a running Slack connection.
-  });
-
   describe('POST /notify', () => {
     it('should return 400 when missing message field', async () => {
       const { status, data } = await request('POST', '/notify', { title: 'oops' });
@@ -337,29 +312,6 @@ describe('cli-bridge HTTP endpoints', () => {
       const { status, data } = await request('POST', '/notify', { title: 'Test', sessionId: 'cc-n001' });
       expect(status).toBe(400);
       expect(data.error).toBe('Missing required field: message');
-    });
-  });
-
-  describe('GET /dashboard', () => {
-    it('should return 200 with HTML content', async () => {
-      const { status, headers, body } = await requestRaw('GET', '/dashboard');
-      expect(status).toBe(200);
-      expect(headers['content-type']).toContain('text/html');
-      expect(body).toContain('<!DOCTYPE html>');
-      expect(body).toContain('Slack Bot Dashboard');
-    });
-  });
-
-  describe('GET /api/status', () => {
-    it('should return 200 with system status fields', async () => {
-      const { status, data } = await request('GET', '/api/status');
-      expect(status).toBe(200);
-      expect(data).toHaveProperty('cpu');
-      expect(data).toHaveProperty('memory');
-      expect(data).toHaveProperty('disk');
-      expect(data).toHaveProperty('battery');
-      expect(data).toHaveProperty('hostname');
-      expect(data).toHaveProperty('timestamp');
     });
   });
 

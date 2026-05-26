@@ -1,12 +1,9 @@
 import http from 'node:http';
-import { sendBlocks, replyInThread } from './slack-sender.js';
-import { formatNotification, formatFullStatus } from '../utils/format.js';
-import { getFullStatus } from '../monitors/index.js';
+import { sendMessage, replyInThread } from './sender.js';
 import { logger } from '../utils/logger.js';
 import { getUnreadMessages, getUnreadMessagesForSession, getAllMessages, markAsRead, clearQueue } from '../message-queue/index.js';
 import { registerSession, unregisterSession, getActiveSessions, touchSession } from '../session-registry/index.js';
 import { createWebSocketServer, isWsConnected, closeWebSocketServer } from './ws-bridge.js';
-import { getDashboardHtml } from '../dashboard/index.js';
 import type { NotifyPayload, ReplyPayload } from '../types.js';
 
 const COMPONENT = 'cli-bridge';
@@ -51,10 +48,10 @@ async function handleNotifyPost(req: http.IncomingMessage, res: http.ServerRespo
 
   const rawTitle = payload.title || 'Notification';
   const title = payload.sessionId ? `[${payload.sessionId}] ${rawTitle}` : rawTitle;
-  const blocks = formatNotification(title, payload.message);
+  const text = `*${title}*\n${payload.message}`;
 
   try {
-    await sendBlocks(blocks, payload.channel);
+    await sendMessage(text, undefined, payload.channel);
     sendJson(res, 200, { ok: true });
   } catch (error) {
     logger.error(COMPONENT, 'Failed to send notification', {
@@ -133,31 +130,6 @@ async function handleMarkReadPost(req: http.IncomingMessage, res: http.ServerRes
   sendJson(res, 200, { ok: true, marked: count });
 }
 
-async function handleStatusPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-  const raw = await readBody(req);
-  let body: { channel?: string } = {};
-  if (raw.trim()) {
-    try {
-      body = JSON.parse(raw) as { channel?: string };
-    } catch {
-      sendJson(res, 400, { error: 'Invalid JSON' });
-      return;
-    }
-  }
-
-  try {
-    const status = await getFullStatus();
-    const blocks = formatFullStatus(status);
-    await sendBlocks(blocks, body.channel);
-    sendJson(res, 200, { ok: true, hostname: status.hostname });
-  } catch (error) {
-    logger.error(COMPONENT, 'Failed to post status', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    sendJson(res, 500, { error: 'Failed to post status' });
-  }
-}
-
 async function handleSessionRegister(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
   const raw = await readBody(req);
   let body: { id?: string; termSessionId?: string };
@@ -210,15 +182,6 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
   // Health check
   if (pathname === '/health' && method === 'GET') {
     sendJson(res, 200, { status: 'ok' });
-    return;
-  }
-
-  // POST /status — collect and post full system status to Slack
-  if (pathname === '/status' && method === 'POST') {
-    handleStatusPost(req, res).catch((err) => {
-      logger.error(COMPONENT, 'Unhandled error in status handler', { error: String(err) });
-      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
-    });
     return;
   }
 
@@ -280,24 +243,6 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
   const sessionDeleteMatch = pathname.match(/^\/sessions\/([a-z0-9-]+)$/i);
   if (sessionDeleteMatch && method === 'DELETE') {
     handleDeleteSession(sessionDeleteMatch[1], res);
-    return;
-  }
-
-  // GET /dashboard — serve web dashboard
-  if (pathname === '/dashboard' && method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(getDashboardHtml());
-    return;
-  }
-
-  // GET /api/status — return raw system status JSON
-  if (pathname === '/api/status' && method === 'GET') {
-    getFullStatus()
-      .then((status) => sendJson(res, 200, status as unknown as Record<string, unknown>))
-      .catch((err) => {
-        logger.error(COMPONENT, 'Failed to get system status', { error: String(err) });
-        if (!res.headersSent) sendJson(res, 500, { error: 'Failed to get system status' });
-      });
     return;
   }
 
