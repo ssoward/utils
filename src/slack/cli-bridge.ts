@@ -4,6 +4,9 @@ import { logger } from '../utils/logger.js';
 import { getUnreadMessages, getUnreadMessagesForSession, getAllMessages, markAsRead, clearQueue } from '../message-queue/index.js';
 import { registerSession, unregisterSession, getActiveSessions, touchSession } from '../session-registry/index.js';
 import { createWebSocketServer, isWsConnected, closeWebSocketServer } from './ws-bridge.js';
+import { getExecutorStatus } from '../agent/executor.js';
+import { listSessions as listAgentSessions, getSession as getAgentSession } from '../agent/session-manager.js';
+import { routeMessage } from '../agent/router.js';
 import type { NotifyPayload, ReplyPayload } from '../types.js';
 
 const COMPONENT = 'cli-bridge';
@@ -243,6 +246,72 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
   const sessionDeleteMatch = pathname.match(/^\/sessions\/([a-z0-9-]+)$/i);
   if (sessionDeleteMatch && method === 'DELETE') {
     handleDeleteSession(sessionDeleteMatch[1], res);
+    return;
+  }
+
+  // GET /agent/status — agent executor status
+  if (pathname === '/agent/status' && method === 'GET') {
+    const status = getExecutorStatus();
+    sendJson(res, 200, { ok: true, ...status });
+    return;
+  }
+
+  // POST /agent/task — submit a task programmatically
+  if (pathname === '/agent/task' && method === 'POST') {
+    readBody(req).then((raw) => {
+      let body: { text: string; channel?: string; threadTs?: string };
+      try {
+        body = JSON.parse(raw) as { text: string; channel?: string; threadTs?: string };
+      } catch {
+        sendJson(res, 400, { error: 'Invalid JSON' });
+        return;
+      }
+      if (!body.text) {
+        sendJson(res, 400, { error: 'Missing required field: text' });
+        return;
+      }
+      const channel = body.channel || 'api';
+      const ts = body.threadTs || Date.now().toString();
+      routeMessage({
+        text: body.text,
+        userId: 'api',
+        channel,
+        messageTs: ts,
+        threadTs: body.threadTs,
+      }).catch((err) => {
+        logger.error(COMPONENT, 'API task failed', { error: String(err) });
+      });
+      sendJson(res, 202, { ok: true, message: 'Task queued' });
+    }).catch((err) => {
+      logger.error(COMPONENT, 'Error reading body', { error: String(err) });
+      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
+    });
+    return;
+  }
+
+  // GET /agent/sessions — list agent conversation sessions
+  if (pathname === '/agent/sessions' && method === 'GET') {
+    const sessions = listAgentSessions().map((s) => ({
+      channel: s.channel,
+      threadTs: s.threadTs,
+      createdAt: s.createdAt,
+      lastActiveAt: s.lastActiveAt,
+      workingDir: s.workingDir,
+      exchangeCount: s.exchanges.length,
+    }));
+    sendJson(res, 200, { ok: true, count: sessions.length, sessions });
+    return;
+  }
+
+  // GET /agent/sessions/:channel/:threadTs — get conversation history
+  const sessionMatch = pathname.match(/^\/agent\/sessions\/([^/]+)\/([^/]+)$/);
+  if (sessionMatch && method === 'GET') {
+    const session = getAgentSession(sessionMatch[1], sessionMatch[2]);
+    if (session) {
+      sendJson(res, 200, { ok: true, session: session as unknown as Record<string, unknown> });
+    } else {
+      sendJson(res, 404, { error: 'Session not found' });
+    }
     return;
   }
 

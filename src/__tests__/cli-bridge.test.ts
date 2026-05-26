@@ -315,6 +315,38 @@ describe('cli-bridge HTTP endpoints', () => {
     });
   });
 
+  describe('GET /agent/status', () => {
+    it('should return executor status', async () => {
+      const { status, data } = await request('GET', '/agent/status');
+      expect(status).toBe(200);
+      expect(data.ok).toBe(true);
+      expect(data).toHaveProperty('busy');
+      expect(data).toHaveProperty('queueDepth');
+    });
+  });
+
+  describe('POST /agent/task', () => {
+    it('should return 400 when missing text', async () => {
+      const { status, data } = await request('POST', '/agent/task', {});
+      expect(status).toBe(400);
+      expect(data.error).toBe('Missing required field: text');
+    });
+
+    it('should return 400 for invalid JSON', async () => {
+      const { status } = await request('POST', '/agent/task', undefined);
+      expect(status).toBe(400);
+    });
+  });
+
+  describe('GET /agent/sessions', () => {
+    it('should return empty when no sessions', async () => {
+      const { status, data } = await request('GET', '/agent/sessions');
+      expect(status).toBe(200);
+      expect(data.ok).toBe(true);
+      expect(data.count).toBe(0);
+    });
+  });
+
   describe('404 handling', () => {
     it('should return 404 for unknown routes', async () => {
       const { status, data } = await request('GET', '/nonexistent');
