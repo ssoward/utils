@@ -10,11 +10,22 @@ import { routeMessage } from '../agent/router.js';
 import type { NotifyPayload, ReplyPayload } from '../types.js';
 
 const COMPONENT = 'cli-bridge';
+const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
+const SAFE_PATH_SEGMENT_RE = /^[a-zA-Z0-9._-]+$/;
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let totalBytes = 0;
+    req.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_BODY_BYTES) {
+        req.destroy();
+        reject(new Error('Request body too large'));
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
     req.on('error', reject);
   });
@@ -68,7 +79,8 @@ function handleGetMessages(params: URLSearchParams, res: http.ServerResponse): v
   const unreadOnly = params.get('unread') !== 'false';
   const shouldMarkRead = params.get('mark_read') === 'true';
   const limitStr = params.get('limit');
-  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+  const limitParsed = limitStr ? parseInt(limitStr, 10) : NaN;
+  const limit = Number.isFinite(limitParsed) && limitParsed > 0 ? limitParsed : undefined;
   const sessionId = params.get('session_id');
 
   // Touch session to keep it alive
@@ -178,6 +190,33 @@ function handleDeleteMessages(res: http.ServerResponse): void {
   sendJson(res, 200, { ok: true, cleared: count });
 }
 
+async function handleAgentTaskPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const raw = await readBody(req);
+  let body: { text: string; channel?: string; threadTs?: string };
+  try {
+    body = JSON.parse(raw) as { text: string; channel?: string; threadTs?: string };
+  } catch {
+    sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+  if (!body.text) {
+    sendJson(res, 400, { error: 'Missing required field: text' });
+    return;
+  }
+  const channel = body.channel || 'api';
+  const ts = body.threadTs || `${(Date.now() / 1000).toFixed(6)}`;
+  routeMessage({
+    text: body.text,
+    userId: 'api',
+    channel,
+    messageTs: ts,
+    threadTs: body.threadTs,
+  }).catch((err) => {
+    logger.error(COMPONENT, 'API task failed', { error: String(err) });
+  });
+  sendJson(res, 202, { ok: true, message: 'Task queued' });
+}
+
 function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
   const { method } = req;
   const { pathname, params } = parseUrl(req.url);
@@ -258,32 +297,8 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
 
   // POST /agent/task — submit a task programmatically
   if (pathname === '/agent/task' && method === 'POST') {
-    readBody(req).then((raw) => {
-      let body: { text: string; channel?: string; threadTs?: string };
-      try {
-        body = JSON.parse(raw) as { text: string; channel?: string; threadTs?: string };
-      } catch {
-        sendJson(res, 400, { error: 'Invalid JSON' });
-        return;
-      }
-      if (!body.text) {
-        sendJson(res, 400, { error: 'Missing required field: text' });
-        return;
-      }
-      const channel = body.channel || 'api';
-      const ts = body.threadTs || Date.now().toString();
-      routeMessage({
-        text: body.text,
-        userId: 'api',
-        channel,
-        messageTs: ts,
-        threadTs: body.threadTs,
-      }).catch((err) => {
-        logger.error(COMPONENT, 'API task failed', { error: String(err) });
-      });
-      sendJson(res, 202, { ok: true, message: 'Task queued' });
-    }).catch((err) => {
-      logger.error(COMPONENT, 'Error reading body', { error: String(err) });
+    handleAgentTaskPost(req, res).catch((err) => {
+      logger.error(COMPONENT, 'Unhandled error in agent task handler', { error: String(err) });
       if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
     });
     return;
@@ -306,7 +321,13 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
   // GET /agent/sessions/:channel/:threadTs — get conversation history
   const sessionMatch = pathname.match(/^\/agent\/sessions\/([^/]+)\/([^/]+)$/);
   if (sessionMatch && method === 'GET') {
-    const session = getAgentSession(sessionMatch[1], sessionMatch[2]);
+    const channel = decodeURIComponent(sessionMatch[1]);
+    const threadTs = decodeURIComponent(sessionMatch[2]);
+    if (!SAFE_PATH_SEGMENT_RE.test(channel) || !SAFE_PATH_SEGMENT_RE.test(threadTs)) {
+      sendJson(res, 400, { error: 'Invalid channel or threadTs format' });
+      return;
+    }
+    const session = getAgentSession(channel, threadTs);
     if (session) {
       sendJson(res, 200, { ok: true, session: session as unknown as Record<string, unknown> });
     } else {
@@ -324,9 +345,7 @@ export function startCliBridge(port: number): http.Server {
   // Attach WebSocket server for real-time channel push
   createWebSocketServer(server);
 
-  server.listen(port, '127.0.0.1', () => {
-    logger.info(COMPONENT, `CLI bridge listening on 127.0.0.1:${port}`);
-  });
+  server.listen(port, '127.0.0.1');
 
   // Clean up WebSocket server on close
   server.on('close', () => {
