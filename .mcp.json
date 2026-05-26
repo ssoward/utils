@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "slack-channel": {
+      "command": "npx",
+      "args": ["tsx", "/Users/ssoward/sandbox/workspace/slack-bot/channel-server/server.ts"],
+      "env": {
+        "SLACK_BOT_PORT": "3848",
+        "AUTONOMOUS": "true"
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "slack-channel-server",
+  "version": "1.0.0",
+  "description": "MCP channel server for real-time Slack ↔ Claude Code messaging",
+  "private": true,
+  "type": "module",
+  "main": "server.ts",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

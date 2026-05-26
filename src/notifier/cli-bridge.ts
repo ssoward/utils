@@ -1,0 +1,323 @@
+import http from 'node:http';
+import { sendBlocks, replyInThread } from './slack-sender.js';
+import { formatNotification, formatFullStatus } from '../utils/format.js';
+import { getFullStatus } from '../monitors/index.js';
+import { logger } from '../utils/logger.js';
+import { getUnreadMessages, getUnreadMessagesForSession, getAllMessages, markAsRead, clearQueue } from '../message-queue/index.js';
+import { registerSession, unregisterSession, getActiveSessions, touchSession } from '../session-registry/index.js';
+import { createWebSocketServer, isWsConnected, closeWebSocketServer } from './ws-bridge.js';
+import { getDashboardHtml } from '../dashboard/index.js';
+import type { NotifyPayload, ReplyPayload } from '../types.js';
+
+const COMPONENT = 'cli-bridge';
+
+function readBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    req.on('error', reject);
+  });
+}
+
+function sendJson(
+  res: http.ServerResponse,
+  statusCode: number,
+  body: Record<string, unknown>,
+): void {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
+
+function parseUrl(raw: string | undefined): { pathname: string; params: URLSearchParams } {
+  const url = new URL(raw || '/', 'http://localhost');
+  return { pathname: url.pathname, params: url.searchParams };
+}
+
+async function handleNotifyPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const raw = await readBody(req);
+  let payload: NotifyPayload;
+  try {
+    payload = JSON.parse(raw) as NotifyPayload;
+  } catch {
+    sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+
+  if (!payload.message || typeof payload.message !== 'string') {
+    sendJson(res, 400, { error: 'Missing required field: message' });
+    return;
+  }
+
+  const rawTitle = payload.title || 'Notification';
+  const title = payload.sessionId ? `[${payload.sessionId}] ${rawTitle}` : rawTitle;
+  const blocks = formatNotification(title, payload.message);
+
+  try {
+    await sendBlocks(blocks, payload.channel);
+    sendJson(res, 200, { ok: true });
+  } catch (error) {
+    logger.error(COMPONENT, 'Failed to send notification', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    sendJson(res, 500, { error: 'Failed to send message' });
+  }
+}
+
+function handleGetMessages(params: URLSearchParams, res: http.ServerResponse): void {
+  const unreadOnly = params.get('unread') !== 'false';
+  const shouldMarkRead = params.get('mark_read') === 'true';
+  const limitStr = params.get('limit');
+  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+  const sessionId = params.get('session_id');
+
+  // Touch session to keep it alive
+  if (sessionId) {
+    touchSession(sessionId);
+  }
+
+  let messages;
+  if (sessionId && unreadOnly) {
+    messages = getUnreadMessagesForSession(sessionId);
+  } else if (unreadOnly) {
+    messages = getUnreadMessages();
+  } else {
+    messages = getAllMessages(limit);
+  }
+
+  if (shouldMarkRead && messages.length > 0) {
+    const ids = messages.filter((m) => !m.read).map((m) => m.id);
+    if (ids.length > 0) markAsRead(ids);
+  }
+
+  sendJson(res, 200, { ok: true, count: messages.length, messages });
+}
+
+async function handleReplyPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const raw = await readBody(req);
+  let payload: ReplyPayload;
+  try {
+    payload = JSON.parse(raw) as ReplyPayload;
+  } catch {
+    sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+
+  if (!payload.channel || !payload.text) {
+    sendJson(res, 400, { error: 'Missing required fields: channel, text' });
+    return;
+  }
+
+  try {
+    await replyInThread(payload.channel, payload.text, payload.threadTs);
+    sendJson(res, 200, { ok: true });
+  } catch (error) {
+    logger.error(COMPONENT, 'Failed to send reply', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    sendJson(res, 500, { error: 'Failed to send reply' });
+  }
+}
+
+async function handleMarkReadPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const raw = await readBody(req);
+  let body: { ids?: string[] };
+  try {
+    body = JSON.parse(raw) as { ids?: string[] };
+  } catch {
+    sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+
+  const count = markAsRead(body.ids);
+  sendJson(res, 200, { ok: true, marked: count });
+}
+
+async function handleStatusPost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const raw = await readBody(req);
+  let body: { channel?: string } = {};
+  if (raw.trim()) {
+    try {
+      body = JSON.parse(raw) as { channel?: string };
+    } catch {
+      sendJson(res, 400, { error: 'Invalid JSON' });
+      return;
+    }
+  }
+
+  try {
+    const status = await getFullStatus();
+    const blocks = formatFullStatus(status);
+    await sendBlocks(blocks, body.channel);
+    sendJson(res, 200, { ok: true, hostname: status.hostname });
+  } catch (error) {
+    logger.error(COMPONENT, 'Failed to post status', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    sendJson(res, 500, { error: 'Failed to post status' });
+  }
+}
+
+async function handleSessionRegister(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const raw = await readBody(req);
+  let body: { id?: string; termSessionId?: string };
+  try {
+    body = JSON.parse(raw) as { id?: string; termSessionId?: string };
+  } catch {
+    sendJson(res, 400, { error: 'Invalid JSON' });
+    return;
+  }
+
+  if (!body.id || typeof body.id !== 'string') {
+    sendJson(res, 400, { error: 'Missing required field: id' });
+    return;
+  }
+
+  try {
+    const session = registerSession(body.id, body.termSessionId);
+    sendJson(res, 200, { ok: true, session });
+  } catch (error) {
+    sendJson(res, 409, { error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+function handleGetSessions(res: http.ServerResponse): void {
+  const sessions = getActiveSessions().map((s) => ({
+    ...s,
+    wsConnected: isWsConnected(s.id),
+  }));
+  sendJson(res, 200, { ok: true, count: sessions.length, sessions });
+}
+
+function handleDeleteSession(sessionId: string, res: http.ServerResponse): void {
+  const removed = unregisterSession(sessionId);
+  if (removed) {
+    sendJson(res, 200, { ok: true, removed: sessionId });
+  } else {
+    sendJson(res, 404, { error: `Session "${sessionId}" not found` });
+  }
+}
+
+function handleDeleteMessages(res: http.ServerResponse): void {
+  const count = clearQueue();
+  sendJson(res, 200, { ok: true, cleared: count });
+}
+
+function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+  const { method } = req;
+  const { pathname, params } = parseUrl(req.url);
+
+  // Health check
+  if (pathname === '/health' && method === 'GET') {
+    sendJson(res, 200, { status: 'ok' });
+    return;
+  }
+
+  // POST /status — collect and post full system status to Slack
+  if (pathname === '/status' && method === 'POST') {
+    handleStatusPost(req, res).catch((err) => {
+      logger.error(COMPONENT, 'Unhandled error in status handler', { error: String(err) });
+      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
+    });
+    return;
+  }
+
+  // POST /notify — send formatted notification to Slack
+  if (pathname === '/notify' && method === 'POST') {
+    handleNotifyPost(req, res).catch((err) => {
+      logger.error(COMPONENT, 'Unhandled error in notify handler', { error: String(err) });
+      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
+    });
+    return;
+  }
+
+  // GET /messages — read queued messages
+  if (pathname === '/messages' && method === 'GET') {
+    handleGetMessages(params, res);
+    return;
+  }
+
+  // POST /reply — send reply to Slack channel/thread
+  if (pathname === '/reply' && method === 'POST') {
+    handleReplyPost(req, res).catch((err) => {
+      logger.error(COMPONENT, 'Unhandled error in reply handler', { error: String(err) });
+      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
+    });
+    return;
+  }
+
+  // POST /messages/mark-read — mark messages as read
+  if (pathname === '/messages/mark-read' && method === 'POST') {
+    handleMarkReadPost(req, res).catch((err) => {
+      logger.error(COMPONENT, 'Unhandled error in mark-read handler', { error: String(err) });
+      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
+    });
+    return;
+  }
+
+  // DELETE /messages — clear queue
+  if (pathname === '/messages' && method === 'DELETE') {
+    handleDeleteMessages(res);
+    return;
+  }
+
+  // POST /sessions/register — register a session
+  if (pathname === '/sessions/register' && method === 'POST') {
+    handleSessionRegister(req, res).catch((err) => {
+      logger.error(COMPONENT, 'Unhandled error in session register handler', { error: String(err) });
+      if (!res.headersSent) sendJson(res, 500, { error: 'Internal server error' });
+    });
+    return;
+  }
+
+  // GET /sessions — list active sessions
+  if (pathname === '/sessions' && method === 'GET') {
+    handleGetSessions(res);
+    return;
+  }
+
+  // DELETE /sessions/:id — unregister a session
+  const sessionDeleteMatch = pathname.match(/^\/sessions\/([a-z0-9-]+)$/i);
+  if (sessionDeleteMatch && method === 'DELETE') {
+    handleDeleteSession(sessionDeleteMatch[1], res);
+    return;
+  }
+
+  // GET /dashboard — serve web dashboard
+  if (pathname === '/dashboard' && method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(getDashboardHtml());
+    return;
+  }
+
+  // GET /api/status — return raw system status JSON
+  if (pathname === '/api/status' && method === 'GET') {
+    getFullStatus()
+      .then((status) => sendJson(res, 200, status as unknown as Record<string, unknown>))
+      .catch((err) => {
+        logger.error(COMPONENT, 'Failed to get system status', { error: String(err) });
+        if (!res.headersSent) sendJson(res, 500, { error: 'Failed to get system status' });
+      });
+    return;
+  }
+
+  sendJson(res, 404, { error: 'Not found' });
+}
+
+export function startCliBridge(port: number): http.Server {
+  const server = http.createServer(handleRequest);
+
+  // Attach WebSocket server for real-time channel push
+  createWebSocketServer(server);
+
+  server.listen(port, '127.0.0.1', () => {
+    logger.info(COMPONENT, `CLI bridge listening on 127.0.0.1:${port}`);
+  });
+
+  // Clean up WebSocket server on close
+  server.on('close', () => {
+    closeWebSocketServer();
+  });
+
+  return server;
+}
