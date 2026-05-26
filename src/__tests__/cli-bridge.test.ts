@@ -347,6 +347,14 @@ describe('cli-bridge HTTP endpoints', () => {
     });
   });
 
+  describe('GET /agent/sessions/:channel/:threadTs', () => {
+    it('should return 404 when session not found', async () => {
+      const { status, data } = await request('GET', '/agent/sessions/C999/999.0');
+      expect(status).toBe(404);
+      expect(data.error).toBe('Session not found');
+    });
+  });
+
   describe('404 handling', () => {
     it('should return 404 for unknown routes', async () => {
       const { status, data } = await request('GET', '/nonexistent');
