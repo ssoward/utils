@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Harness Demo</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #3b82f6;
+    --accent2: #8b5cf6;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --cyan: #06b6d4;
+    --red: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 320px 1fr 340px; grid-template-rows: auto 1fr; height: 100vh; }
+  header {
+    grid-column: 1 / -1;
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent);
+    color: white;
+  }
+
+  /* Left panel - Architecture */
+  .panel-left {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .panel-left h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
+
+  /* Architecture flow */
+  .arch-layer {
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border-left: 3px solid;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .arch-layer:hover { background: var(--surface2); }
+  .arch-layer.active { background: var(--surface2); }
+  .arch-layer .label { font-size: 13px; font-weight: 600; }
+  .arch-layer .desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .arch-arrow {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 2px 0;
+    opacity: 0.5;
+  }
+  .arch-arrow.bidirectional { color: var(--orange); opacity: 0.8; }
+
+  /* Real-world examples */
+  .examples { margin-top: 20px; }
+  .example-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .example-card h3 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+  .example-card .row { display: flex; gap: 4px; margin-bottom: 2px; }
+  .example-card .key { color: var(--text-dim); min-width: 60px; }
+
+  /* Center - Chat */
+  .panel-center { display: flex; flex-direction: column; overflow: hidden; }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+  }
+  .msg {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+  }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.assistant { align-self: flex-start; align-items: flex-start; }
+  .msg .bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-wrap: break-word;
+  }
+  .msg.user .bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg .meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; padding: 0 4px; }
+
+  .chat-input-area {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    gap: 8px;
+  }
+  .chat-input-area input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .chat-input-area input:focus { border-color: var(--accent); }
+  .chat-input-area button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .chat-input-area button:hover { opacity: 0.9; }
+  .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Quick actions */
+  .quick-actions {
+    padding: 8px 24px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .quick-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .quick-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* Right panel - Trace & Metrics */
+  .panel-right {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+    font-size: 12px;
+  }
+  .panel-right h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  /* Metrics grid */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .metric-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .metric-card .value { font-size: 22px; font-weight: 700; }
+  .metric-card .label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Trace log */
+  .trace-log { margin-bottom: 20px; }
+  .trace-entry {
+    background: var(--bg);
+    border-left: 3px solid var(--accent2);
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+  }
+  .trace-entry .stage { color: var(--accent2); font-weight: 600; }
+  .trace-entry .action { color: var(--text-dim); }
+  .trace-entry.tool { border-color: var(--green); }
+  .trace-entry.tool .stage { color: var(--green); }
+
+  /* Session info */
+  .session-info {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .session-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .session-row .key { color: var(--text-dim); }
+
+  /* Concept explainer */
+  .concept-box {
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .concept-box h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+  .concept-box p { font-size: 12px; line-height: 1.6; color: var(--text-dim); }
+  .concept-box code {
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--cyan);
+  }
+
+  /* Harness components list */
+  .component-list { margin-top: 16px; }
+  .component {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .component:last-child { border-bottom: none; }
+  .component .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .component .name { font-size: 12px; font-weight: 600; }
+  .component .status { font-size: 10px; color: var(--green); margin-left: auto; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
+    .panel-left, .panel-right { max-height: 300px; }
+  }
+
+  /* Welcome overlay */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .welcome h2 { font-size: 20px; margin-bottom: 12px; }
+  .welcome p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+  .welcome .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-size: 13px;
+    line-height: 2;
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .welcome .diagram .flow-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .welcome .diagram .flow-arrow {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 0 20px;
+  }
+  .welcome .diagram .highlight { color: var(--orange); font-weight: 700; }
+
+  /* Loading animation */
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>AI Harness Demo</h1>
+    <span class="tag">INTERACTIVE</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px; color:var(--text-dim)" id="mode-indicator">Mode: simulation</span>
+  </header>
+
+  <!-- Left Panel: Architecture -->
+  <div class="panel-left">
+    <h2>Harness Architecture</h2>
+    <div id="arch-diagram"></div>
+
+    <div class="examples">
+      <h2 style="margin-top:8px">Real-World Examples</h2>
+      <div id="examples-list"></div>
+    </div>
+  </div>
+
+  <!-- Center: Chat Interface -->
+  <div class="panel-center">
+    <div class="chat-messages" id="chat-messages">
+      <div class="welcome">
+        <h2>What is an AI Harness?</h2>
+        <p>
+          An AI harness is the <strong>orchestration layer</strong> between
+          users and an AI model. It's the middleware that makes raw AI useful
+          in real applications.
+        </p>
+        <div class="diagram">
+          <div class="flow-item"><span style="color:var(--accent)">User</span> sends a message</div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-item"><span class="highlight">HARNESS</span> runs pre-processing middleware</div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-item"><span class="highlight">HARNESS</span> loads session context &amp; history</div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-item"><span style="color:var(--orange)">AI Model</span> generates a response</div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-item"><span class="highlight">HARNESS</span> executes any tool calls</div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-item"><span class="highlight">HARNESS</span> runs post-processing middleware</div>
+          <div class="flow-arrow">|</div>
+          <div class="flow-item"><span style="color:var(--accent)">User</span> receives the result</div>
+        </div>
+        <p>
+          Try the quick prompts below or type your own message. Watch the
+          <strong>trace panel</strong> on the right to see the harness
+          pipeline in action.
+        </p>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="quick-btn" onclick="sendQuick('What is an AI harness?')">What is a harness?</button>
+      <button class="quick-btn" onclick="sendQuick('How does middleware work?')">Middleware</button>
+      <button class="quick-btn" onclick="sendQuick('Explain tools and function calling')">Tool use</button>
+      <button class="quick-btn" onclick="sendQuick('How do sessions work?')">Sessions</button>
+      <button class="quick-btn" onclick="sendQuick('What time is it?')">Use clock tool</button>
+      <button class="quick-btn" onclick="sendQuick('Calculate 42 + 58 + 100')">Use calculator</button>
+      <button class="quick-btn" onclick="sendQuick('What is the weather?')">Use weather tool</button>
+      <button class="quick-btn" onclick="sendQuick('Describe the architecture')">Architecture</button>
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Ask about AI harnesses, or try a tool..." autofocus>
+      <button id="send-btn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- Right Panel: Trace & Metrics -->
+  <div class="panel-right">
+    <div class="concept-box">
+      <h3>How This Demo Works</h3>
+      <p>
+        This app <em>is</em> an AI harness. The server (<code>server.js</code>)
+        implements the full harness pattern: middleware pipeline,
+        session management, tool registry, and AI execution.
+        It tries <code>claude -p</code> first, falls back to simulation.
+      </p>
+    </div>
+
+    <h2>Pipeline Trace</h2>
+    <div class="trace-log" id="trace-log">
+      <div style="color:var(--text-dim); font-size:11px; padding:8px 0;">
+        Send a message to see the harness pipeline trace...
+      </div>
+    </div>
+
+    <h2>Metrics</h2>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="value" id="metric-requests">0</div>
+        <div class="label">Requests</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" id="metric-latency">0ms</div>
+        <div class="label">Avg Latency</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" id="metric-sessions">0</div>
+        <div class="label">Sessions</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" id="metric-errors">0</div>
+        <div class="label">Errors</div>
+      </div>
+    </div>
+
+    <h2>Harness Components</h2>
+    <div class="component-list" id="component-list"></div>
+
+    <h2 style="margin-top:16px">Session</h2>
+    <div class="session-info">
+      <div class="session-row"><span class="key">ID:</span><span id="session-id">-</span></div>
+      <div class="session-row"><span class="key">Messages:</span><span id="session-msgs">0</span></div>
+      <div class="session-row"><span class="key">Started:</span><span id="session-started">-</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sessionId = 'demo-' + Date.now().toString(36);
+let messageCount = 0;
+const sessionStart = new Date();
+
+document.getElementById('session-id').textContent = sessionId;
+document.getElementById('session-started').textContent = sessionStart.toLocaleTimeString();
+
+// Load architecture diagram
+fetch('/api/architecture').then(r => r.json()).then(data => {
+  const container = document.getElementById('arch-diagram');
+  data.layers.forEach((layer, i) => {
+    if (i > 0) {
+      const isToolLoop = (layer.id === 'tools' || data.layers[i-1]?.id === 'tools');
+      container.innerHTML += `<div class="arch-arrow ${isToolLoop ? 'bidirectional' : ''}">${isToolLoop ? '&#x21C5;' : '&#x25BC;'}</div>`;
+    }
+    container.innerHTML += `
+      <div class="arch-layer" style="border-color:${layer.color}" onclick="highlightLayer('${layer.id}')" id="layer-${layer.id}">
+        <div class="label" style="color:${layer.color}">${layer.label}</div>
+        <div class="desc">${layer.description}</div>
+      </div>`;
+  });
+
+  const exList = document.getElementById('examples-list');
+  data.examples.forEach(ex => {
+    exList.innerHTML += `
+      <div class="example-card">
+        <h3>${ex.name}</h3>
+        <div class="row"><span class="key">Interface:</span><span>${ex.interface}</span></div>
+        <div class="row"><span class="key">Session:</span><span>${ex.session}</span></div>
+        <div class="row"><span class="key">AI:</span><span>${ex.ai}</span></div>
+        <div class="row"><span class="key">Tools:</span><span>${ex.tools}</span></div>
+      </div>`;
+  });
+});
+
+// Load harness status
+function loadStatus() {
+  fetch('/api/status').then(r => r.json()).then(data => {
+    document.getElementById('metric-requests').textContent = data.metrics.requests;
+    document.getElementById('metric-latency').textContent = data.metrics.avgLatency + 'ms';
+    document.getElementById('metric-sessions').textContent = data.sessions;
+    document.getElementById('metric-errors').textContent = data.metrics.errors;
+
+    const compList = document.getElementById('component-list');
+    compList.innerHTML = '';
+    data.middleware.forEach(name => {
+      compList.innerHTML += `
+        <div class="component">
+          <div class="dot" style="background:var(--accent2)"></div>
+          <span class="name">${name}</span>
+          <span class="status">active</span>
+        </div>`;
+    });
+    data.tools.forEach(name => {
+      compList.innerHTML += `
+        <div class="component">
+          <div class="dot" style="background:var(--green)"></div>
+          <span class="name">${name}</span>
+          <span class="status">registered</span>
+        </div>`;
+    });
+  });
+}
+loadStatus();
+
+// Highlight architecture layer
+function highlightLayer(id) {
+  document.querySelectorAll('.arch-layer').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('layer-' + id);
+  if (el) el.classList.add('active');
+}
+
+// Animate layers during request
+function animatePipeline() {
+  const order = ['user', 'middleware-pre', 'session', 'ai', 'tools', 'ai', 'middleware-post', 'response'];
+  order.forEach((id, i) => {
+    setTimeout(() => highlightLayer(id), i * 200);
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.arch-layer').forEach(el => el.classList.remove('active'));
+  }, order.length * 200 + 500);
+}
+
+// Chat functions
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = '';
+  addMessage('user', message);
+  const loadingId = addLoading();
+  animatePipeline();
+
+  document.getElementById('send-btn').disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sessionId }),
+    });
+    const data = await res.json();
+
+    removeLoading(loadingId);
+    addMessage('assistant', data.response, data.metrics);
+    updateTrace(data.trace, data.metrics);
+    messageCount++;
+    document.getElementById('session-msgs').textContent = messageCount * 2;
+    loadStatus();
+
+    if (data.response && !data.response.includes('Error')) {
+      document.getElementById('mode-indicator').textContent = 'Mode: ' +
+        (data.metrics.latency > 2000 ? 'Claude CLI (live)' : 'simulation');
+    }
+  } catch (err) {
+    removeLoading(loadingId);
+    addMessage('assistant', 'Connection error: ' + err.message);
+  }
+
+  document.getElementById('send-btn').disabled = false;
+}
+
+function sendQuick(text) {
+  document.getElementById('chat-input').value = text;
+  sendMessage();
+}
+
+function addMessage(role, text, metrics) {
+  // Remove welcome message on first interaction
+  const welcome = document.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `
+    <div class="bubble">${escapeHtml(text)}</div>
+    ${metrics ? `<div class="meta">${metrics.latency}ms | ${metrics.historyLength} msgs in session</div>` : ''}
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addLoading() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  const id = 'loading-' + Date.now();
+  div.id = id;
+  div.className = 'msg assistant';
+  div.innerHTML = '<div class="bubble" style="color:var(--text-dim)">Processing through harness pipeline<span class="loading-dots"></span></div>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeLoading(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function updateTrace(trace, metrics) {
+  const container = document.getElementById('trace-log');
+  container.innerHTML = '';
+
+  // Always show the standard pipeline stages
+  const stages = [
+    { stage: 'loggingMiddleware', action: 'logged request', cls: '' },
+    { stage: 'sanitizationMiddleware', action: 'sanitized input', cls: '' },
+    { stage: 'sessionManager', action: `loaded history (${metrics.historyLength} msgs)`, cls: '' },
+    { stage: 'aiEngine', action: `generated response (${metrics.latency}ms)`, cls: '' },
+  ];
+
+  // Insert any tool calls
+  if (trace) {
+    trace.forEach(t => {
+      if (t.stage === 'tool-use') {
+        stages.push({ stage: 'toolExecutor', action: t.action, cls: 'tool' });
+      }
+    });
+  }
+
+  stages.push({ stage: 'formattingMiddleware', action: 'formatted output', cls: '' });
+  stages.push({ stage: 'delivery', action: 'sent to client', cls: '' });
+
+  stages.forEach((s, i) => {
+    setTimeout(() => {
+      container.innerHTML += `
+        <div class="trace-entry ${s.cls}">
+          <span class="stage">${s.stage}</span>
+          <span class="action"> ${s.action}</span>
+        </div>`;
+    }, i * 80);
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Enter to send
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>
+</body>
+</html>
