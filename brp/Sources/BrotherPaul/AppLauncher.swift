@@ -22,7 +22,7 @@ enum AppLauncher {
             }
         }
 
-        notify(mode: mode, verb: "started")
+        notify(mode: mode, verb: "started", detail: nil)
     }
 
     /// Inverse of `launch`: for each app listed in the mode, find any matching
@@ -34,6 +34,7 @@ enum AppLauncher {
 
         let myBundle = Bundle.main.bundleIdentifier
         let running = NSWorkspace.shared.runningApplications
+        var quitCount = 0
 
         for appName in mode.apps {
             let matches = running.filter { app in
@@ -51,10 +52,22 @@ enum AppLauncher {
             for app in matches {
                 NSLog("BrotherPaul: quitting %@", app.localizedName ?? appName)
                 _ = app.terminate()
+                quitCount += 1
             }
         }
 
-        notify(mode: mode, verb: "ended")
+        // Distinguish "ended a session" from "nothing matched" — the latter is
+        // almost always a config mismatch (apps list doesn't match what's
+        // actually running) and was previously invisible to the user.
+        let detail: String
+        if mode.apps.isEmpty {
+            detail = "no apps configured"
+        } else if quitCount == 0 {
+            detail = "no matching apps were running"
+        } else {
+            detail = "\(quitCount) app\(quitCount == 1 ? "" : "s") quit"
+        }
+        notify(mode: mode, verb: "ended", detail: detail)
     }
 
     private static func launchApp(named name: String) {
@@ -101,12 +114,13 @@ enum AppLauncher {
         }
     }
 
-    private static func notify(mode: LaunchMode, verb: String) {
+    private static func notify(mode: LaunchMode, verb: String, detail: String?) {
         // UNUserNotificationCenter requires a real .app bundle. When running via
         // `swift run` (bare executable, no bundle identifier) it throws an NSException,
         // so we log instead and only post a real banner once installed as BrotherPaul.app.
         guard Bundle.main.bundleIdentifier != nil else {
-            NSLog("BrotherPaul: %@ session %@ (no bundle — skipping notification)", mode.name, verb)
+            let suffix = detail.map { " — \($0)" } ?? ""
+            NSLog("BrotherPaul: %@ session %@%@ (no bundle — skipping notification)", mode.name, verb, suffix)
             return
         }
 
@@ -116,7 +130,8 @@ enum AppLauncher {
             let content = UNMutableNotificationContent()
             content.title = "Brother Paul"
             let prefix = verb == "started" ? "Good morning. " : ""
-            content.body = "\(prefix)\(mode.name) session \(verb)."
+            let suffix = detail.map { " — \($0)" } ?? ""
+            content.body = "\(prefix)\(mode.name) session \(verb)\(suffix)."
             content.sound = .default
 
             let request = UNNotificationRequest(

@@ -433,6 +433,18 @@ Check that the name in `apps[]` matches the bundle name in `/Applications/`
 (e.g. `Microsoft Teams`, not `Teams`). You can also use a bundle identifier
 (`com.microsoft.teams2`) — `AppLauncher.launchApp(named:)` tries that first.
 
+**"End <Mode> Session" appears to do nothing.**
+The end action only quits apps that are (a) currently running and (b) listed
+in that mode's `apps[]`. If `defaultMode` points at a mode whose `apps` list
+doesn't match what's actually running, the menu click still fires and the
+"session ended" toast still posts, but no app gets a Quit. The notification
+now spells this out — `Custom session ended — no matching apps were running` —
+so a mismatched config is visible instead of invisible. Fix by editing
+`~/Library/Application Support/BrotherPaul/config.json` so the mode's `apps[]`
+matches the display names of the apps you want quit (e.g.
+`["Microsoft Outlook", "Slack", "Microsoft Teams"]`), then **Reload Config**
+or relaunch.
+
 **Mission Control: Outlook calendar shows "errno -1751" or "AppleScript failed".**
 Microsoft has removed the `calendar event` AppleScript class from current
 Outlook for Mac builds — there's no toggle that brings it back. Two reliable
