@@ -60,20 +60,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func handleURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
         guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
-              let url = URLComponents(string: urlString) else {
+              let action = URLActionParser.parse(urlString) else {
             return
         }
 
-        let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let modeFromQuery = url.queryItems?.first(where: { $0.name.caseInsensitiveCompare("mode") == .orderedSame })?.value
-
-        switch action.lowercased() {
-        case "start":
-            launch(modeName: modeFromQuery)
-        case "stop", "end":
-            endSession(modeName: modeFromQuery)
-        default:
-            NSLog("BrotherPaul: ignoring URL with unknown action '%@'", action)
+        switch action {
+        case .start(let mode):
+            launch(modeName: mode)
+        case .stop(let mode):
+            endSession(modeName: mode)
+        case .unknown(let name):
+            NSLog("BrotherPaul: ignoring URL with unknown action '%@'", name)
         }
     }
 

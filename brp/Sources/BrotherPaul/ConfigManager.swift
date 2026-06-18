@@ -14,6 +14,10 @@ final class ConfigManager {
     private let decoder = JSONDecoder()
 
     var configDirectory: URL {
+        if let override = ProcessInfo.processInfo.environment["BROTHERPAUL_CONFIG_DIR"],
+           !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
         let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         return base.appendingPathComponent("BrotherPaul", isDirectory: true)
     }
