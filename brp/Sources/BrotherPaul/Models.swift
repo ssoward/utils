@@ -172,6 +172,7 @@ struct VoiceConfig: Codable, Equatable {
     /// Gate for the run_system_action tool (AppleScript/shell/open).
     var allowSystemControl: Bool
     /// Confirmation policy: tiered | confirmEverything | trust.
+    /// Not yet read by the headless agent core — tier resolution + isDestructive override land in Plan 2 (voice session controller).
     var confirmTier: String
 
     static let `default` = VoiceConfig(

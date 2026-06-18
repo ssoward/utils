@@ -64,4 +64,19 @@ final class ToolRiskClassifierTests: XCTestCase {
     func testUnknownToolDefaultsToConfirm() {
         XCTAssertEqual(ToolRiskClassifier.risk(for: call("something_new", [:])), .confirm)
     }
+
+    func testOpenFileIsSafe() {
+        XCTAssertEqual(ToolRiskClassifier.risk(for: call("run_system_action",
+            ["kind": .string("open_file"), "payload": .string("~/notes.txt")])), .safe)
+    }
+
+    func testHideOthersIsSafe() {
+        XCTAssertEqual(ToolRiskClassifier.risk(for: call("control_apps",
+            ["action": .string("hide_others")])), .safe)
+    }
+
+    func testUnknownControlAppsActionRequiresConfirm() {
+        XCTAssertEqual(ToolRiskClassifier.risk(for: call("control_apps",
+            ["action": .string("delete_everything")])), .confirm)
+    }
 }
