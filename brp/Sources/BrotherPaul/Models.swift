@@ -144,6 +144,82 @@ struct MissionControlConfig: Codable {
     }
 }
 
+struct VoiceWakeWordConfig: Codable, Equatable {
+    /// Listen for the "Brother Paul" wake word continuously.
+    var enabled: Bool = true
+    /// Picovoice access key (free tier covers personal use). Empty → wake word disabled, hotkey fallback used.
+    var porcupineAccessKey: String = ""
+    /// Path to the trained "Brother Paul" .ppn keyword file.
+    var keywordPath: String = ""
+
+    static let `default` = VoiceWakeWordConfig()
+}
+
+struct VoiceConfig: Codable, Equatable {
+    /// Master switch for the whole voice agent. OFF by default.
+    var enabled: Bool
+    /// Claude model id. Configurable; Haiku/Sonnet lower latency.
+    var model: String
+    /// output_config.effort: low | medium | high | max.
+    var effort: String
+    /// Per-turn output cap.
+    var maxTokens: Int
+    var wakeWord: VoiceWakeWordConfig
+    /// Use a push-to-talk hotkey when no Porcupine key is configured.
+    var pushToTalkFallback: Bool
+    /// Speak replies aloud (in addition to the panel).
+    var speakReplies: Bool
+    /// Gate for the run_system_action tool (AppleScript/shell/open).
+    var allowSystemControl: Bool
+    /// Confirmation policy: tiered | confirmEverything | trust.
+    var confirmTier: String
+
+    static let `default` = VoiceConfig(
+        enabled: false,
+        model: "claude-opus-4-8",
+        effort: "medium",
+        maxTokens: 1024,
+        wakeWord: .default,
+        pushToTalkFallback: true,
+        speakReplies: true,
+        allowSystemControl: true,
+        confirmTier: "tiered"
+    )
+
+    enum CodingKeys: String, CodingKey {
+        case enabled, model, effort, maxTokens, wakeWord, pushToTalkFallback
+        case speakReplies, allowSystemControl, confirmTier
+    }
+
+    init(enabled: Bool, model: String, effort: String, maxTokens: Int,
+         wakeWord: VoiceWakeWordConfig, pushToTalkFallback: Bool,
+         speakReplies: Bool, allowSystemControl: Bool, confirmTier: String) {
+        self.enabled = enabled
+        self.model = model
+        self.effort = effort
+        self.maxTokens = maxTokens
+        self.wakeWord = wakeWord
+        self.pushToTalkFallback = pushToTalkFallback
+        self.speakReplies = speakReplies
+        self.allowSystemControl = allowSystemControl
+        self.confirmTier = confirmTier
+    }
+
+    init(from decoder: Decoder) throws {
+        let d = VoiceConfig.default
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? d.enabled
+        model = try c.decodeIfPresent(String.self, forKey: .model) ?? d.model
+        effort = try c.decodeIfPresent(String.self, forKey: .effort) ?? d.effort
+        maxTokens = try c.decodeIfPresent(Int.self, forKey: .maxTokens) ?? d.maxTokens
+        wakeWord = try c.decodeIfPresent(VoiceWakeWordConfig.self, forKey: .wakeWord) ?? d.wakeWord
+        pushToTalkFallback = try c.decodeIfPresent(Bool.self, forKey: .pushToTalkFallback) ?? d.pushToTalkFallback
+        speakReplies = try c.decodeIfPresent(Bool.self, forKey: .speakReplies) ?? d.speakReplies
+        allowSystemControl = try c.decodeIfPresent(Bool.self, forKey: .allowSystemControl) ?? d.allowSystemControl
+        confirmTier = try c.decodeIfPresent(String.self, forKey: .confirmTier) ?? d.confirmTier
+    }
+}
+
 struct AppConfig: Codable {
     var hideOthersAfterLaunch: Bool
     var defaultMode: String
@@ -151,9 +227,10 @@ struct AppConfig: Codable {
     var enableSnap: Bool
     var enableDragSnap: Bool
     var missionControl: MissionControlConfig
+    var voice: VoiceConfig
 
     enum CodingKeys: String, CodingKey {
-        case hideOthersAfterLaunch, defaultMode, modes, enableSnap, enableDragSnap, missionControl
+        case hideOthersAfterLaunch, defaultMode, modes, enableSnap, enableDragSnap, missionControl, voice
     }
 
     init(
@@ -162,7 +239,8 @@ struct AppConfig: Codable {
         modes: [LaunchMode],
         enableSnap: Bool = true,
         enableDragSnap: Bool = true,
-        missionControl: MissionControlConfig = .default
+        missionControl: MissionControlConfig = .default,
+        voice: VoiceConfig = .default
     ) {
         self.hideOthersAfterLaunch = hideOthersAfterLaunch
         self.defaultMode = defaultMode
@@ -170,6 +248,7 @@ struct AppConfig: Codable {
         self.enableSnap = enableSnap
         self.enableDragSnap = enableDragSnap
         self.missionControl = missionControl
+        self.voice = voice
     }
 
     init(from decoder: Decoder) throws {
@@ -180,6 +259,7 @@ struct AppConfig: Codable {
         enableSnap = try c.decodeIfPresent(Bool.self, forKey: .enableSnap) ?? true
         enableDragSnap = try c.decodeIfPresent(Bool.self, forKey: .enableDragSnap) ?? true
         missionControl = try c.decodeIfPresent(MissionControlConfig.self, forKey: .missionControl) ?? .default
+        voice = try c.decodeIfPresent(VoiceConfig.self, forKey: .voice) ?? .default
     }
 
     static let `default` = AppConfig(
