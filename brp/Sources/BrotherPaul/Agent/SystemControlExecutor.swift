@@ -18,15 +18,18 @@ struct SystemControlExecutor: ToolExecutor {
             return .ok("Opened \(payload).")
 
         case "open_file":
-            NSWorkspace.shared.open(URL(fileURLWithPath: (payload as NSString).expandingTildeInPath))
-            return .ok("Opened \(payload).")
+            let path = (payload as NSString).expandingTildeInPath
+            let opened = NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            return opened ? .ok("Opened \(payload).") : .failure("Couldn't open \(payload).")
 
         case "applescript":
+            guard let script = NSAppleScript(source: payload) else {
+                return .failure("Could not compile the AppleScript.")
+            }
             var error: NSDictionary?
-            let script = NSAppleScript(source: payload)
-            let result = script?.executeAndReturnError(&error)
+            let result = script.executeAndReturnError(&error)
             if let error = error { return .failure("AppleScript error: \(error)") }
-            return .ok(result?.stringValue ?? "Ran the AppleScript.")
+            return .ok(result.stringValue ?? "Ran the AppleScript.")
 
         case "shell":
             return runShell(payload)

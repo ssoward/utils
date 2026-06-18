@@ -31,4 +31,22 @@ final class SystemControlExecutorTests: XCTestCase {
         XCTAssertFalse(outcome.isError)
         XCTAssertTrue(outcome.content.contains("hello-brp"))
     }
+
+    @MainActor
+    func testOpenMissingFileIsError() async {
+        let exec = SystemControlExecutor(allowSystemControl: true)
+        let outcome = await exec.execute(ToolCall(id: "1", name: "run_system_action",
+            input: ["kind": .string("open_file"),
+                    "payload": .string("/nonexistent/zzz_brp_missing_98765.txt")]))
+        XCTAssertTrue(outcome.isError)
+    }
+
+    @MainActor
+    func testAppleScriptRuntimeErrorIsError() async {
+        let exec = SystemControlExecutor(allowSystemControl: true)
+        let outcome = await exec.execute(ToolCall(id: "1", name: "run_system_action",
+            input: ["kind": .string("applescript"),
+                    "payload": .string("error \"boom\" number -1")]))
+        XCTAssertTrue(outcome.isError)
+    }
 }
