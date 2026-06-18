@@ -60,7 +60,7 @@ final class ClaudeClient {
                 return nil
             }
 
-            if toolCalls.isEmpty || response.stop_reason == "end_turn" {
+            if toolCalls.isEmpty {
                 return firstText(response.content) ?? ""
             }
 

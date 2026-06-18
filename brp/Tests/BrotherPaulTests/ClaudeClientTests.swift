@@ -92,4 +92,20 @@ final class ClaudeClientTests: XCTestCase {
             XCTFail("wrong error: \(error)")
         }
     }
+
+    func testToolUseWithEndTurnStillExecutes() async throws {
+        let transport = StubTransport([
+            MessagesResponse(content: [
+                .toolUse(id: "tu1", name: "control_windows", input: ["zone": .string("leftHalf")])
+            ], stop_reason: "end_turn"),                       // unusual: tool_use + end_turn
+            MessagesResponse(content: [.text("Done.")], stop_reason: "end_turn")
+        ])
+        let client = makeClient(transport)
+        var executed = false
+        let reply = try await client.send("snap left",
+            confirm: { _ in true },
+            execute: { _ in executed = true; return .ok("snapped") })
+        XCTAssertTrue(executed)                                // tool NOT dropped
+        XCTAssertEqual(reply, "Done.")
+    }
 }
