@@ -24,4 +24,14 @@ final class JSONValueTests: XCTestCase {
         XCTAssertEqual(JSONValue.double(8).intValue, 8)
         XCTAssertNil(JSONValue.string("x").intValue)
     }
+
+    func testNullRoundTrips() throws {
+        let data = try JSONEncoder().encode(JSONValue.null)
+        XCTAssertEqual(try JSONDecoder().decode(JSONValue.self, from: data), .null)
+    }
+
+    func testFractionalDoubleHasNoIntValue() {
+        XCTAssertNil(JSONValue.double(3.5).intValue)
+        XCTAssertNil(JSONValue.double(1e20).intValue)   // out of Int range → nil, not a crash
+    }
 }

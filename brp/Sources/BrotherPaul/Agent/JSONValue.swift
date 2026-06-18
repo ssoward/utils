@@ -13,7 +13,7 @@ enum JSONValue: Codable, Equatable {
     var stringValue: String? { if case .string(let s) = self { return s }; return nil }
 
     var intValue: Int? {
-        if case .double(let d) = self, d.rounded() == d { return Int(d) }
+        if case .double(let d) = self { return Int(exactly: d) }
         return nil
     }
 
