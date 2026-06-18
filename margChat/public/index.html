@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>margChat</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="username-modal" class="modal">
+    <div class="modal-card">
+      <h2>Welcome to margChat</h2>
+      <p>Pick a display name (1-24 chars).</p>
+      <input id="username-input" type="text" maxlength="24" autofocus />
+      <div id="username-error" class="error"></div>
+      <button id="username-go">Enter</button>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <aside class="sidebar">
+      <div class="section">
+        <h3>Rooms</h3>
+        <ul id="rooms-list"></ul>
+        <form id="new-room-form">
+          <input id="new-room-input" type="text" placeholder="+ new room" maxlength="32" />
+        </form>
+      </div>
+      <div class="section">
+        <h3>Online in <span id="current-room-label">lobby</span></h3>
+        <ul id="users-list"></ul>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <span class="me">You are <strong id="me-username"></strong> in <strong id="topbar-room">lobby</strong></span>
+      </header>
+      <section id="messages" class="messages"></section>
+      <div id="typing-strip" class="typing-strip"></div>
+      <form id="send-form" class="composer">
+        <input id="send-input" type="text" maxlength="2000" placeholder="Message..." autocomplete="off" />
+        <button type="submit">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

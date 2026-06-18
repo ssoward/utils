@@ -1,0 +1,20 @@
+/*
+ * overlay.css — HumanMark injected styles
+ *
+ * Kept intentionally minimal. Badge colors and outlines are set via
+ * inline styles and a dedicated <style id="hm-outlines"> tag in the
+ * renderer so they are never overridden by host-page CSS.
+ *
+ * This file only handles the analyzing pulse animation and the HM pill
+ * base state (colors are overridden inline by renderer.ts).
+ */
+
+/* Scanning pulse on elements being analyzed */
+[data-hm-state="analyzing"] {
+  animation: hm-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hm-pulse {
+  0%, 100% { outline: 2px solid rgba(0,255,247,0.3) !important; outline-offset: 3px !important; }
+  50%       { outline: 2px solid rgba(0,255,247,0.85) !important; outline-offset: 3px !important; }
+}

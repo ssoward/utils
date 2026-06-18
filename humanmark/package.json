@@ -1,0 +1,23 @@
+{
+  "name": "humanmark",
+  "version": "0.3.7",
+  "description": "Chrome extension to flag AI-generated text",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "package": "./scripts/package.sh",
+    "release:verify": "node scripts/verify-creds.mjs",
+    "release:upload": "dotenv -- bash -c 'chrome-webstore-upload upload --source humanmark-v$npm_package_version.zip'",
+    "release:publish": "dotenv -- chrome-webstore-upload publish",
+    "release": "npm run build && npm run package && npm run release:upload"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.42",
+    "chrome-webstore-upload-cli": "^3.5.0",
+    "dotenv-cli": "^11.0.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vite-plugin-web-extension": "^4.1.0"
+  }
+}
