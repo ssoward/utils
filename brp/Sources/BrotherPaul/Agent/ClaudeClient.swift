@@ -64,7 +64,13 @@ final class ClaudeClient {
             }
 
             if toolCalls.isEmpty {
-                return firstText(response.content) ?? ""
+                let text = firstText(response.content) ?? ""
+                if response.stop_reason == "max_tokens" {
+                    return text.isEmpty
+                        ? "My reply was cut off before I could finish."
+                        : text + " … (my reply was cut off)."
+                }
+                return text
             }
 
             var results: [APIContentBlock] = []

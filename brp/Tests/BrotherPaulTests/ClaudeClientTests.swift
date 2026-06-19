@@ -154,4 +154,15 @@ final class ClaudeClientTests: XCTestCase {
         XCTAssertTrue(executed)         // ran directly
         XCTAssertEqual(reply, "Closed.")
     }
+
+    func testMaxTokensReplyIsMarkedTruncated() async throws {
+        let transport = StubTransport([
+            MessagesResponse(content: [.text("Here is the first part")], stop_reason: "max_tokens")
+        ])
+        let client = makeClient(transport)
+        let reply = try await client.send("tell me a long story",
+            confirm: { _ in true }, execute: { _ in .ok("") })
+        XCTAssertTrue(reply.contains("Here is the first part"))
+        XCTAssertTrue(reply.lowercased().contains("cut off"))
+    }
 }
