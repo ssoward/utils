@@ -33,7 +33,7 @@ final class VoiceSessionController {
     /// Install the wake callback and start the engine.
     func start() {
         wake.onWake = { [weak self] in
-            MainActor.assumeIsolated { self?.beginListening() }
+            Task { @MainActor in self?.beginListening() }
         }
         wake.start()
     }

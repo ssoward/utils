@@ -77,11 +77,12 @@ final class VoiceSessionControllerTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testWakeBeginsListening() {
+    func testWakeBeginsListening() async {
         let (c, wake, stt, _, _, _, ui) = makeController()
         c.start()
         XCTAssertTrue(wake.started)
         wake.fire()
+        await Task.yield()
         XCTAssertEqual(c.state, .listening)
         XCTAssertEqual(stt.startCount, 1)
         XCTAssertEqual(ui.states.last, .listening)
@@ -144,6 +145,14 @@ final class VoiceSessionControllerTests: XCTestCase {
         let brain = MockBrain(); brain.reply = "Done."
         let (c, _, _, tts, _, _, _) = makeController(brain: brain, speakReplies: false)
         await c.handleFinalTranscript("do it")
+        XCTAssertTrue(tts.spoken.isEmpty)
+        XCTAssertEqual(c.state, .idle)
+    }
+
+    func testBrainErrorIsSilentWhenSpeakRepliesFalse() async {
+        let brain = MockBrain(); brain.errorToThrow = ClaudeClientError.missingAPIKey
+        let (c, _, _, tts, _, _, _) = makeController(brain: brain, speakReplies: false)
+        await c.handleFinalTranscript("hello")
         XCTAssertTrue(tts.spoken.isEmpty)
         XCTAssertEqual(c.state, .idle)
     }
