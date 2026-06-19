@@ -70,7 +70,22 @@ enum AppLauncher {
         notify(mode: mode, verb: "ended", detail: detail)
     }
 
-    private static func launchApp(named name: String) {
+    /// Quit a single running app by bundle id or localized name. Never quits Brother Paul.
+    @discardableResult
+    static func quitApp(named name: String) -> Bool {
+        let myBundle = Bundle.main.bundleIdentifier
+        let matches = NSWorkspace.shared.runningApplications.filter { app in
+            if app.bundleIdentifier == myBundle { return false }
+            if let bid = app.bundleIdentifier, bid.caseInsensitiveCompare(name) == .orderedSame { return true }
+            if let n = app.localizedName, n.caseInsensitiveCompare(name) == .orderedSame { return true }
+            return false
+        }
+        if matches.isEmpty { return false }
+        for app in matches { _ = app.terminate() }
+        return true
+    }
+
+    static func launchApp(named name: String) {
         let workspace = NSWorkspace.shared
 
         if let url = workspace.urlForApplication(withBundleIdentifier: name) {
