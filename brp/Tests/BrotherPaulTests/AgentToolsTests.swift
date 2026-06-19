@@ -35,4 +35,14 @@ final class AgentToolsTests: XCTestCase {
         XCTAssertTrue(outcome.isError)
         XCTAssertTrue(outcome.content.contains("zone"))
     }
+
+    func testQueryScheduleSchemaHasSourcesButNotLookbackHours() {
+        let tool = AgentTools.definitions().first { $0.name == "query_schedule" }!
+        guard case .object(let schema) = tool.input_schema,
+              case .object(let props)? = schema["properties"] else {
+            return XCTFail("query_schedule schema malformed")
+        }
+        XCTAssertNotNil(props["sources"])
+        XCTAssertNil(props["lookbackHours"], "lookbackHours was advertised but never honored — it must be removed")
+    }
 }
