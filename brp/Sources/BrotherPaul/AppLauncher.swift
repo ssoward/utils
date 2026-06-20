@@ -70,6 +70,21 @@ enum AppLauncher {
         notify(mode: mode, verb: "ended", detail: detail)
     }
 
+    /// Bring an already-running app to the front WITHOUT launching it.
+    /// Returns true iff a running match (by bundle id or localized name) was activated.
+    @discardableResult
+    static func activate(named name: String) -> Bool {
+        let myBundle = Bundle.main.bundleIdentifier
+        let match = NSWorkspace.shared.runningApplications.first { app in
+            if app.bundleIdentifier == myBundle { return false }
+            if let bid = app.bundleIdentifier, bid.caseInsensitiveCompare(name) == .orderedSame { return true }
+            if let n = app.localizedName, n.caseInsensitiveCompare(name) == .orderedSame { return true }
+            return false
+        }
+        guard let app = match else { return false }
+        return app.activate(options: [])
+    }
+
     /// Quit a single running app by bundle id or localized name. Never quits Brother Paul.
     @discardableResult
     static func quitApp(named name: String) -> Bool {

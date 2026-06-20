@@ -7,4 +7,8 @@ final class AppLauncherSurfaceTests: XCTestCase {
     func testQuitUnknownAppReturnsFalse() {
         XCTAssertFalse(AppLauncher.quitApp(named: "NoSuchApp_ZZZ_12345"))
     }
+
+    func testActivateUnknownAppReturnsFalse() {
+        XCTAssertFalse(AppLauncher.activate(named: "NoSuchApp_ZZZ_12345"))
+    }
 }

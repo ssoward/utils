@@ -17,6 +17,7 @@ final class ClaudeClient {
     private let systemPrompt: String
     private let secrets: SecretStore
     private let transport: MessagesTransport
+    private let needsConfirmation: (ToolCall) -> Bool
 
     /// Conversation history, preserved across calls within one ClaudeClient instance.
     private var history: [APIMessage] = []
@@ -25,12 +26,14 @@ final class ClaudeClient {
     private let maxIterations = 8
 
     init(config: VoiceConfig, tools: [APIToolDefinition], systemPrompt: String,
-         secrets: SecretStore, transport: MessagesTransport) {
+         secrets: SecretStore, transport: MessagesTransport,
+         needsConfirmation: @escaping (ToolCall) -> Bool = { ToolRiskClassifier.risk(for: $0) == .confirm }) {
         self.config = config
         self.tools = tools
         self.systemPrompt = systemPrompt
         self.secrets = secrets
         self.transport = transport
+        self.needsConfirmation = needsConfirmation
     }
 
     /// Send a user transcript, run the tool-use loop, return the final spoken text.
@@ -61,13 +64,19 @@ final class ClaudeClient {
             }
 
             if toolCalls.isEmpty {
-                return firstText(response.content) ?? ""
+                let text = firstText(response.content) ?? ""
+                if response.stop_reason == "max_tokens" {
+                    return text.isEmpty
+                        ? "My reply was cut off before I could finish."
+                        : text + " … (my reply was cut off)."
+                }
+                return text
             }
 
             var results: [APIContentBlock] = []
             for call in toolCalls {
                 let outcome: ExecutionOutcome
-                if ToolRiskClassifier.risk(for: call) == .confirm {
+                if needsConfirmation(call) {
                     let approved = await confirm(call)
                     outcome = approved ? await execute(call) : .ok("User declined this action.")
                 } else {

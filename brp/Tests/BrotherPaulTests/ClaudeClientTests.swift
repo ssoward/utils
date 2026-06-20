@@ -108,4 +108,61 @@ final class ClaudeClientTests: XCTestCase {
         XCTAssertTrue(executed)                                // tool NOT dropped
         XCTAssertEqual(reply, "Done.")
     }
+
+    func testInjectedPolicyCanConfirmASafeTool() async throws {
+        // confirmEverything-style: even a safe tool must be confirmed.
+        let transport = StubTransport([
+            MessagesResponse(content: [
+                .toolUse(id: "tu1", name: "control_windows", input: ["zone": .string("leftHalf")])
+            ], stop_reason: "tool_use"),
+            MessagesResponse(content: [.text("Done.")], stop_reason: "end_turn")
+        ])
+        let secrets = InMemorySecretStore()
+        secrets.set("sk-ant-test", for: SecretKey.anthropicAPIKey)
+        let client = ClaudeClient(config: .default, tools: [], systemPrompt: "s",
+                                  secrets: secrets, transport: transport,
+                                  needsConfirmation: { _ in true })   // confirm everything
+        var confirmed = false
+        var executed = false
+        _ = try await client.send("snap left",
+            confirm: { _ in confirmed = true; return false },        // deny
+            execute: { _ in executed = true; return .ok("") })
+        XCTAssertTrue(confirmed)        // safe tool WAS sent to confirm
+        XCTAssertFalse(executed)        // denied → not executed
+    }
+
+    func testInjectedPolicyCanSkipConfirmationEntirely() async throws {
+        // trust-style: even a normally-risky tool runs without confirmation.
+        let transport = StubTransport([
+            MessagesResponse(content: [
+                .toolUse(id: "tu1", name: "control_apps",
+                         input: ["action": .string("close_app"), "app": .string("Slack")])
+            ], stop_reason: "tool_use"),
+            MessagesResponse(content: [.text("Closed.")], stop_reason: "end_turn")
+        ])
+        let secrets = InMemorySecretStore()
+        secrets.set("sk-ant-test", for: SecretKey.anthropicAPIKey)
+        let client = ClaudeClient(config: .default, tools: [], systemPrompt: "s",
+                                  secrets: secrets, transport: transport,
+                                  needsConfirmation: { _ in false })  // never confirm
+        var confirmed = false
+        var executed = false
+        let reply = try await client.send("close slack",
+            confirm: { _ in confirmed = true; return true },
+            execute: { _ in executed = true; return .ok("closed") })
+        XCTAssertFalse(confirmed)       // confirm never called
+        XCTAssertTrue(executed)         // ran directly
+        XCTAssertEqual(reply, "Closed.")
+    }
+
+    func testMaxTokensReplyIsMarkedTruncated() async throws {
+        let transport = StubTransport([
+            MessagesResponse(content: [.text("Here is the first part")], stop_reason: "max_tokens")
+        ])
+        let client = makeClient(transport)
+        let reply = try await client.send("tell me a long story",
+            confirm: { _ in true }, execute: { _ in .ok("") })
+        XCTAssertTrue(reply.contains("Here is the first part"))
+        XCTAssertTrue(reply.lowercased().contains("cut off"))
+    }
 }

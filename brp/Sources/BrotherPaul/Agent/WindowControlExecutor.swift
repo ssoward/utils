@@ -10,7 +10,9 @@ struct WindowControlExecutor: ToolExecutor {
         }
         // Optionally focus a named app first so the right window gets snapped.
         if let app = call.input["app"]?.stringValue {
-            AppLauncher.launchApp(named: app)
+            if !AppLauncher.activate(named: app) {
+                AppLauncher.launchApp(named: app)
+            }
             try? await Task.sleep(nanoseconds: 400_000_000)
         }
         let ok = WindowSnapper.snap(to: zone)

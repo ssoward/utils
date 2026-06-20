@@ -43,10 +43,6 @@ enum AgentTools {
                             "type": .string("array"),
                             "items": .object(["type": .string("string")]),
                             "description": .string("Subset of ['calendar','email','notifications']. Omit for calendar+email.")
-                        ]),
-                        "lookbackHours": .object([
-                            "type": .string("number"),
-                            "description": .string("Window in hours.")
                         ])
                     ],
                     required: [])),
