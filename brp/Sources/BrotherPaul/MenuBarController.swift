@@ -303,6 +303,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let view = SettingsView { [weak self] in
             self?.rebuildMenu()
             self?.onConfigChanged?()
+            self?.settingsWindow?.close()
         }
         let hosting = NSHostingController(rootView: view)
         let window = KeyboardCloseWindow(contentViewController: hosting)
