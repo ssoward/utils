@@ -1,0 +1,260 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  background: #F5F6FA;
+  color: #2C3E50;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.logo {
+  background: #E74C3C;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 5px 9px;
+  border-radius: 8px;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+section {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #7F8C8D;
+  margin-bottom: 14px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.form-row:last-child { margin-bottom: 0; }
+
+label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #2C3E50;
+}
+
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  padding: 8px 10px;
+  border: 1px solid #DDE1E7;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #2C3E50;
+  background: #FAFBFC;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #3498DB;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #E74C3C;
+}
+
+.slider-row label {
+  display: flex;
+  justify-content: space-between;
+}
+
+.privacy-warning {
+  background: #FFF3CD;
+  border: 1px solid #FFEAA7;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #856404;
+  margin-top: 10px;
+}
+
+.privacy-warning label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #856404;
+}
+
+.hint {
+  font-size: 12px;
+  color: #7F8C8D;
+  margin-bottom: 10px;
+}
+
+textarea {
+  resize: vertical;
+  font-family: monospace;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-primary {
+  background: #E74C3C;
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover { background: #C0392B; }
+
+.save-msg {
+  font-size: 12px;
+  color: #27AE60;
+  font-weight: 600;
+}
+
+/* Color picker section */
+.color-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+
+.color-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.color-item label {
+  font-size: 12px;
+  color: #7F8C8D;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type="color"] {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid #DDE1E7;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #FAFBFC;
+}
+
+.color-swatch {
+  display: inline-block;
+  width: 60px;
+  height: 24px;
+  border-radius: 99px;
+  border: 1px solid rgba(0,0,0,0.1);
+  transition: background 0.15s;
+}
+
+.color-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-label {
+  font-size: 12px;
+  color: #7F8C8D;
+}
+
+.preset {
+  background: #F0F1F3;
+  border: 1px solid #DDE1E7;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.preset:hover { background: #E2E5EA; }
+
+/* Inline info indicator — hover shows the title attribute */
+.info {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #7F8C8D;
+  background: #ECF0F1;
+  border-radius: 50%;
+  cursor: help;
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: background 0.15s;
+}
+
+.info:hover {
+  background: #BDC3C7;
+  color: #2C3E50;
+}
+
+.hint a {
+  color: #3498DB;
+  text-decoration: none;
+}
+
+.hint a:hover { text-decoration: underline; }
+
+.save-msg {
+  font-size: 12px;
+  color: #27AE60;
+  font-weight: 600;
+}

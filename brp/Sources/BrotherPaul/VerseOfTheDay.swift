@@ -82,6 +82,13 @@ enum VerseOfTheDay {
         cachedCustomVerses = .uninitialized
     }
 
+    /// Reset the cached verses load. Only intended for tests — call after
+    /// changing the BROTHERPAUL_CONFIG_DIR-redirected custom verses file so
+    /// the next read picks it up.
+    static func invalidateCacheForTesting() {
+        cachedCustomVerses = .uninitialized
+    }
+
     private enum CachedLoad {
         case uninitialized
         case loaded([Verse]?)

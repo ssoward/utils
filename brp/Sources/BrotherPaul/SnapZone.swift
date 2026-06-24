@@ -22,7 +22,11 @@ enum SnapZone: String, CaseIterable {
 
     /// Compute the target frame in screen coordinates (origin = bottom-left).
     func frame(in screen: NSScreen) -> CGRect {
-        let v = screen.visibleFrame
+        frame(inVisibleFrame: screen.visibleFrame)
+    }
+
+    /// CGRect-parameter variant so this is unit-testable without an NSScreen.
+    func frame(inVisibleFrame v: CGRect) -> CGRect {
         let half = CGSize(width: v.width / 2, height: v.height / 2)
 
         switch self {
@@ -54,7 +58,11 @@ enum SnapZone: String, CaseIterable {
     /// Pick a zone when the cursor is near a screen edge / corner.
     /// `cursor` is in global screen coordinates (origin = bottom-left of primary screen).
     static func zoneForCursor(_ cursor: CGPoint, on screen: NSScreen) -> SnapZone? {
-        let frame = screen.frame
+        zoneForCursor(cursor, screenFrame: screen.frame)
+    }
+
+    /// CGRect-parameter variant so this is unit-testable without an NSScreen.
+    static func zoneForCursor(_ cursor: CGPoint, screenFrame frame: CGRect) -> SnapZone? {
         let cornerSize: CGFloat = 30
         let edgeThreshold: CGFloat = 6
 

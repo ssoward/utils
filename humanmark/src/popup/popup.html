@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HumanMark</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="header">
+    <span class="logo">HM</span>
+    <span class="title">HumanMark</span>
+    <label class="toggle-switch" title="Enable/Disable globally">
+      <input type="checkbox" id="toggle-enabled" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="stats" id="stats-panel">
+    <div class="stat">
+      <div class="stat-val" id="stat-scanned">—</div>
+      <div class="stat-label">Scanned</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val hm-red" id="stat-flagged">—</div>
+      <div class="stat-label">Flagged AI</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-cache">—</div>
+      <div class="stat-label">Cache hits</div>
+    </div>
+  </div>
+
+  <div class="site-row">
+    <span id="site-label">This site</span>
+    <label class="toggle-switch small">
+      <input type="checkbox" id="toggle-site" checked />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="footer">
+    <a id="open-options" href="#">Settings</a>
+    <span class="provider" id="provider-label">Heuristic mode</span>
+  </div>
+
+  <script src="./popup.ts" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HumanMark Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="logo">HM</span>
+      <h1>HumanMark Settings</h1>
+    </div>
+
+    <section>
+      <h2>Detection API</h2>
+      <div class="form-row">
+        <label for="api-provider">Provider <span class="info" title="Default is the offline heuristic — no setup, ~80% accuracy on prose, no data leaves your browser. Switch to GPTZero or Sapling if you want sharper accuracy on long-form content; you bring your own API key.">ⓘ</span></label>
+        <select id="api-provider">
+          <option value="none">Heuristic only (offline, no key needed)</option>
+          <option value="sapling">Sapling AI (~$0.002/1k chars)</option>
+          <option value="gptzero">GPTZero (10k words/month free)</option>
+        </select>
+      </div>
+
+      <div class="form-row" id="api-key-row">
+        <label for="api-key">API Key <span class="info" title="Stored locally in chrome.storage.local, sandboxed to this extension. Sent only to the provider you chose, only after you tick the consent box below. The key is redacted in any internal extension messages so other extension surfaces never see it. Leave blank to keep your existing saved key.">ⓘ</span></label>
+        <input type="password" id="api-key" placeholder="Paste your API key here" autocomplete="off" />
+      </div>
+
+      <div class="privacy-warning" id="privacy-warning">
+        <strong>Privacy notice:</strong> When an API is enabled, text from web pages you browse
+        will be sent to the selected provider for analysis. No other personal data is transmitted.
+        <br /><br />
+        <label>
+          <input type="checkbox" id="privacy-ack" />
+          I understand and consent to text being sent for analysis.
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Detection Thresholds</h2>
+      <div class="form-row slider-row">
+        <label>AI threshold: <span id="ai-threshold-val">75%</span> <span class="info" title="Score at which a block gets the red 🤖 AI badge. Raise this (e.g. 80–85%) if HumanMark feels too aggressive. Lower it (e.g. 65–70%) if it misses things you're sure are AI.">ⓘ</span></label>
+        <input type="range" id="ai-threshold" min="50" max="99" value="75" />
+      </div>
+      <div class="form-row slider-row">
+        <label>Uncertain threshold: <span id="uncertain-threshold-val">50%</span> <span class="info" title="Minimum score for the amber ⚠️ badge. Below this, no badge is drawn. Always kept strictly below the AI threshold.">ⓘ</span></label>
+        <input type="range" id="uncertain-threshold" min="20" max="74" value="50" />
+      </div>
+      <div class="form-row">
+        <label>Minimum text length (chars) <span class="info" title="Blocks shorter than this are skipped entirely. Default 60. Raise it (e.g. 100–150) if you're getting false positives on captions, error messages, or short snippets. Lower it (e.g. 40) to catch shorter posts (Twitter-style).">ⓘ</span></label>
+        <input type="number" id="min-length" min="30" max="500" value="60" />
+      </div>
+    </section>
+
+    <section>
+      <h2>Flag Colors</h2>
+      <div class="color-row">
+        <div class="color-item">
+          <label for="color-ai">AI detected <span class="info" title="Color of the outline + badge for high-confidence flags (score above the AI threshold).">ⓘ</span></label>
+          <div class="color-preview-wrap">
+            <input type="color" id="color-ai" value="#ff2d6b" />
+            <span class="color-swatch" id="swatch-ai" style="background:#ff2d6b;"></span>
+          </div>
+        </div>
+        <div class="color-item">
+          <label for="color-uncertain">Uncertain <span class="info" title="Color for medium-confidence flags (between the uncertain and AI thresholds).">ⓘ</span></label>
+          <div class="color-preview-wrap">
+            <input type="color" id="color-uncertain" value="#f9ff21" />
+            <span class="color-swatch" id="swatch-uncertain" style="background:#f9ff21;"></span>
+          </div>
+        </div>
+      </div>
+      <div class="color-presets">
+        <span class="preset-label">Presets:</span>
+        <button class="preset" data-ai="#ff2d6b" data-unc="#f9ff21">Neon</button>
+        <button class="preset" data-ai="#e74c3c" data-unc="#e67e22">Classic</button>
+        <button class="preset" data-ai="#9b59b6" data-unc="#3498db">Purple/Blue</button>
+        <button class="preset" data-ai="#00ff88" data-unc="#ffaa00">Matrix</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Site Deny-List <span class="info" title="HumanMark will not scan any site whose hostname appears here. Use this for banking and financial portals, internal company tools, and any site where the heuristic is consistently wrong. Per-site toggling from the popup adds/removes entries here automatically.">ⓘ</span></h2>
+      <p class="hint">One hostname per line. HumanMark will not scan these sites.</p>
+      <textarea id="deny-list" rows="5" placeholder="example.com&#10;intranet.mycompany.com"></textarea>
+    </section>
+
+    <p class="hint" style="text-align:center;margin-top:8px;">
+      Need help? See the <a href="https://github.com/ssoward/ideas/blob/main/humanmark/USER_GUIDE.md" target="_blank" rel="noopener">User Guide</a>
+      · Report a bug or suggest a feature on <a href="https://github.com/ssoward/ideas/issues" target="_blank" rel="noopener">GitHub</a>.
+    </p>
+
+    <div class="actions">
+      <button id="save-btn" class="btn-primary">Save Settings</button>
+      <span id="save-msg" class="save-msg"></span>
+    </div>
+  </div>
+  <script src="./options.ts" type="module"></script>
+</body>
+</html>

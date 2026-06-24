@@ -139,11 +139,31 @@ Setup:
 2. Open **Shortcuts.app** → **+** to create a new shortcut.
 3. Add the action **Open URLs** and set the URL to `brotherpaul://start`
    (or `brotherpaul://start?mode=Deep%20Work` for a specific mode).
-4. Name the shortcut **"Brother Paul"**.
+4. Name the shortcut **"Brother Paul"** (or any distinctive phrase — see below).
 5. Enable **Use with Siri** so "Hey Siri, Brother Paul" works.
 
 Now saying "Brother Paul" runs the default mode every time, even when the app
 is already in the menu bar.
+
+> **Choosing a phrase Siri will actually run.** The shortcut's *name* is the
+> phrase Siri listens for. Two things to avoid:
+>
+> - **Don't use phrases Siri reserves for itself** — most notably
+>   **"good morning"** (and "good night", "good evening"). Siri intercepts these
+>   for its own built-in greeting/summary and will *not* reliably run your
+>   shortcut, even after you create it. Pick something distinctive instead
+>   (e.g. "Brother Paul", "Begin my day", "Start my work"). The simplest
+>   reliable setup is one **Open URLs → `brotherpaul://start`** shortcut named
+>   with your chosen phrase.
+> - **`?mode=` must exactly match a mode name in your `config.json`.** If the
+>   URL names a mode that doesn't exist (e.g. `?mode=Full` while your config
+>   only defines `Custom`), the app receives the URL but logs
+>   `unknown mode '…'` and launches nothing. Use `brotherpaul://start` with no
+>   `?mode` to always run `defaultMode`, or match the name exactly.
+>
+> Verify any shortcut without Siri by running its URL in Terminal:
+> `open "brotherpaul://start"` — your apps should launch and a "Good morning"
+> notification should appear.
 
 ### End-session Shortcut
 
