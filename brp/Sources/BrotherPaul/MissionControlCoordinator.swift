@@ -28,6 +28,10 @@ final class MissionControlCoordinator: ObservableObject {
             ? OutlookFetcher.fetchUnread(vipSenders: cfg.vipSenders)
             : SectionResult(items: [], status: nil)
 
+        async let graphMail: SectionResult = cfg.includeGraphMail
+            ? GraphMailFetcher.fetchUnread(config: cfg.graph, vipSenders: cfg.vipSenders, hours: cfg.lookbackHours)
+            : SectionResult(items: [], status: nil)
+
         async let gmail: SectionResult = cfg.includeGmail
             ? GmailFetcher.fetchUnread(config: cfg.gmail, vipSenders: cfg.vipSenders)
             : SectionResult(items: [], status: nil)
@@ -36,7 +40,7 @@ final class MissionControlCoordinator: ObservableObject {
             ? NotificationsFetcher.fetchRecent(hours: cfg.lookbackHours, appBlocklist: cfg.notificationAppBlocklist)
             : SectionResult(items: [], status: "Notifications disabled in config.")
 
-        let (ek, oc, gc, o, g, n) = await (eventKitEvents, outlookEvents, graphEvents, outlook, gmail, notifications)
+        let (ek, oc, gc, o, gm, g, n) = await (eventKitEvents, outlookEvents, graphEvents, outlook, graphMail, gmail, notifications)
 
         let events = mergeEvents(
             eventKit: ek,
@@ -46,7 +50,14 @@ final class MissionControlCoordinator: ObservableObject {
             includingOutlook: cfg.includeOutlookCalendar,
             includingGraph: cfg.includeGraphCalendar
         )
-        let emails = mergeEmail(outlook: o, gmail: g, includingOutlook: cfg.includeOutlook, includingGmail: cfg.includeGmail)
+        let emails = mergeEmail(
+            outlook: o,
+            graphMail: gm,
+            gmail: g,
+            includingOutlook: cfg.includeOutlook,
+            includingGraphMail: cfg.includeGraphMail,
+            includingGmail: cfg.includeGmail
+        )
 
         let verse = cfg.includeVerseOfDay ? VerseOfTheDay.todays() : nil
 
@@ -103,18 +114,38 @@ final class MissionControlCoordinator: ObservableObject {
         return SectionResult(items: items, status: statuses.isEmpty ? nil : statuses.joined(separator: "  •  "))
     }
 
-    private func mergeEmail(outlook: SectionResult, gmail: SectionResult, includingOutlook: Bool, includingGmail: Bool) -> SectionResult {
-        var items = outlook.items + gmail.items
-        items.sort {
+    private func mergeEmail(
+        outlook: SectionResult,
+        graphMail: SectionResult,
+        gmail: SectionResult,
+        includingOutlook: Bool,
+        includingGraphMail: Bool,
+        includingGmail: Bool
+    ) -> SectionResult {
+        // Both AppleScript Outlook and Graph mail target the same inbox; if a
+        // user has both on (e.g. while migrating off Legacy), de-dup by
+        // (subject, sender) so messages don't appear twice.
+        var seen = Set<String>()
+        var deduped: [DigestItem] = []
+        for item in outlook.items + graphMail.items + gmail.items {
+            let key = "\(item.title.lowercased())|\((item.subtitle ?? "").lowercased())"
+            if seen.insert(key).inserted {
+                deduped.append(item)
+            }
+        }
+        deduped.sort {
             if $0.priority != $1.priority { return $0.priority > $1.priority }
             return ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast)
         }
 
         var statuses: [String] = []
-        if includingOutlook, let s = outlook.status { statuses.append("Outlook: \(s)") }
-        if includingGmail,  let s = gmail.status   { statuses.append("Gmail: \(s)") }
-        if !includingOutlook && !includingGmail { statuses.append("All email sources disabled.") }
+        if includingOutlook,   let s = outlook.status   { statuses.append("Outlook: \(s)") }
+        if includingGraphMail, let s = graphMail.status { statuses.append("Graph: \(s)") }
+        if includingGmail,     let s = gmail.status     { statuses.append("Gmail: \(s)") }
+        if !includingOutlook && !includingGraphMail && !includingGmail {
+            statuses.append("All email sources disabled.")
+        }
 
-        return SectionResult(items: items, status: statuses.isEmpty ? nil : statuses.joined(separator: "  •  "))
+        return SectionResult(items: deduped, status: statuses.isEmpty ? nil : statuses.joined(separator: "  •  "))
     }
 }

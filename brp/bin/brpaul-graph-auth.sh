@@ -14,8 +14,10 @@
 #   2. In the new app → Authentication → Add a platform → "Mobile and desktop
 #      applications" → custom URI: http://localhost:8765 → Configure → Save.
 #      Also turn on "Allow public client flows" → Yes → Save.
-#   3. API permissions → Add → Microsoft Graph → Delegated → Calendars.Read →
-#      Add. (Grant admin consent if your tenant requires it.)
+#   3. API permissions → Add → Microsoft Graph → Delegated → add BOTH:
+#        • Calendars.Read   (for Mission Control's Outlook calendar)
+#        • Mail.Read        (for Mission Control's Outlook unread mail)
+#      → Add. (Grant admin consent if your tenant requires it.)
 #   4. From the Overview page, copy the "Application (client) ID".
 #
 # Usage:
@@ -44,7 +46,7 @@ CLIENT_ID="$1"
 TENANT="${BRPAUL_TENANT:-common}"
 PORT="${BRPAUL_OAUTH_PORT:-8765}"
 REDIRECT="http://localhost:${PORT}"
-SCOPE="Calendars.Read offline_access"
+SCOPE="Calendars.Read Mail.Read offline_access"
 
 # --- PKCE: code_verifier + code_challenge (S256) ---
 VERIFIER=$(openssl rand 64 | base64 | tr -d '\n=' | tr '+/' '-_' | head -c 64)
@@ -123,6 +125,9 @@ cat <<EOF
 (replacing the empty graph block already there):
 
   "includeGraphCalendar": true,
+  "includeGraphMail":     true,
+  "includeOutlook":         false,
+  "includeOutlookCalendar": false,
   "graph": {
     "clientID":     "${CLIENT_ID}",
     "tenant":       "${TENANT}",
@@ -130,6 +135,5 @@ cat <<EOF
   }
 
 Then choose "Reload Config" from the BrotherPaul menu, open Mission Control,
-and click Refresh. Your Outlook calendar events will appear in the Events
-section.
+and click Refresh. Your Outlook calendar events AND unread mail will appear.
 EOF

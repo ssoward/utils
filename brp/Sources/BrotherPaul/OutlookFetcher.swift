@@ -42,6 +42,14 @@ enum OutlookFetcher {
             return SectionResult(items: [], status: "Microsoft Outlook is not installed.")
         }
 
+        // New Outlook strips the Exchange-account AppleScript surface — queries
+        // silently return empty instead of erroring, which looks like an empty
+        // inbox. Detect the runtime flag and tell the user the truth.
+        if let defaults = UserDefaults(suiteName: "com.microsoft.Outlook"),
+           defaults.bool(forKey: "IsRunningNewOutlook") {
+            return SectionResult(items: [], status: "Outlook: New Outlook is active, which doesn't expose mail to AppleScript. Switch to Microsoft Graph mail (set includeGraphMail: true after running brp/bin/brpaul-graph-auth.sh) or toggle Outlook → New Outlook → off.")
+        }
+
         var error: NSDictionary?
         guard let apple = NSAppleScript(source: script) else {
             return SectionResult(items: [], status: "Internal: couldn't compile Outlook script.")

@@ -54,6 +54,7 @@ struct MissionControlConfig: Codable {
     var includeOutlook: Bool
     var includeOutlookCalendar: Bool
     var includeGraphCalendar: Bool
+    var includeGraphMail: Bool
     var includeGmail: Bool
     var includeNotifications: Bool
     var includeVerseOfDay: Bool
@@ -75,6 +76,7 @@ struct MissionControlConfig: Codable {
         includeOutlook: true,
         includeOutlookCalendar: true,
         includeGraphCalendar: false,
+        includeGraphMail: false,
         includeGmail: false,
         includeNotifications: true,
         includeVerseOfDay: true,
@@ -88,7 +90,7 @@ struct MissionControlConfig: Codable {
     )
 
     enum CodingKeys: String, CodingKey {
-        case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGmail, includeNotifications, includeVerseOfDay
+        case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGraphMail, includeGmail, includeNotifications, includeVerseOfDay
         case lookbackHours, vipSenders, notificationAppBlocklist, openOnStartWork, quickLinks, gmail, graph
     }
 
@@ -97,6 +99,7 @@ struct MissionControlConfig: Codable {
         includeOutlook: Bool,
         includeOutlookCalendar: Bool,
         includeGraphCalendar: Bool,
+        includeGraphMail: Bool,
         includeGmail: Bool,
         includeNotifications: Bool,
         includeVerseOfDay: Bool,
@@ -112,6 +115,7 @@ struct MissionControlConfig: Codable {
         self.includeOutlook = includeOutlook
         self.includeOutlookCalendar = includeOutlookCalendar
         self.includeGraphCalendar = includeGraphCalendar
+        self.includeGraphMail = includeGraphMail
         self.includeGmail = includeGmail
         self.includeNotifications = includeNotifications
         self.includeVerseOfDay = includeVerseOfDay
@@ -131,6 +135,7 @@ struct MissionControlConfig: Codable {
         includeOutlook = try c.decodeIfPresent(Bool.self, forKey: .includeOutlook) ?? d.includeOutlook
         includeOutlookCalendar = try c.decodeIfPresent(Bool.self, forKey: .includeOutlookCalendar) ?? d.includeOutlookCalendar
         includeGraphCalendar = try c.decodeIfPresent(Bool.self, forKey: .includeGraphCalendar) ?? d.includeGraphCalendar
+        includeGraphMail = try c.decodeIfPresent(Bool.self, forKey: .includeGraphMail) ?? d.includeGraphMail
         includeGmail = try c.decodeIfPresent(Bool.self, forKey: .includeGmail) ?? d.includeGmail
         includeNotifications = try c.decodeIfPresent(Bool.self, forKey: .includeNotifications) ?? d.includeNotifications
         includeVerseOfDay = try c.decodeIfPresent(Bool.self, forKey: .includeVerseOfDay) ?? d.includeVerseOfDay
