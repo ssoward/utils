@@ -15,3 +15,4 @@ A collection of small, self-contained tools &amp; apps.
 | [humanmark](./humanmark/) | Chrome extension | Flag AI-generated text on any page; offline heuristic mode or optional GPTZero/Sapling API. ([User Guide](./humanmark/USER_GUIDE.md)) |
 | [margChat](./margChat/) | Node service | Lightweight socket-based group chat — single Node.js process, share via a tunnel. |
 | [slack-bot](./slack-bot/) | Node service | Drive a Claude Code coding agent from Slack; replies in-thread with full context. |
+| [ai-harness-demo](./ai-harness-demo/) | Interactive demo | Explains what an AI harness is and how to build one. |

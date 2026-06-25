@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Harness Demo</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #3b82f6;
+    --accent2: #8b5cf6;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --cyan: #06b6d4;
+    --red: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 320px 1fr 340px; grid-template-rows: auto 1fr; height: 100vh; }
+  header {
+    grid-column: 1 / -1;
+    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent);
+    color: white;
+  }
+
+  /* Left panel - Architecture */
+  .panel-left {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .panel-left h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
+
+  /* Architecture flow */
+  .arch-layer {
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border-left: 3px solid;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .arch-layer:hover { background: var(--surface2); }
+  .arch-layer.active { background: var(--surface2); }
+  .arch-layer .label { font-size: 13px; font-weight: 600; }
+  .arch-layer .desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .arch-arrow {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 2px 0;
+    opacity: 0.5;
+  }
+  .arch-arrow.bidirectional { color: var(--orange); opacity: 0.8; }
+
+  /* Real-world examples */
+  .examples { margin-top: 20px; }
+  .example-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .example-card h3 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+  .example-card .row { display: flex; gap: 4px; margin-bottom: 2px; }
+  .example-card .key { color: var(--text-dim); min-width: 60px; }
+
+  /* Center - Chat */
+  .panel-center { display: flex; flex-direction: column; overflow: hidden; }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+  }
+  .msg {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+  }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.assistant { align-self: flex-start; align-items: flex-start; }
+  .msg .bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-wrap: break-word;
+  }
+  .msg.user .bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg .meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; padding: 0 4px; }
+
+  .chat-input-area {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    gap: 8px;
+  }
+  .chat-input-area input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .chat-input-area input:focus { border-color: var(--accent); }
+  .chat-input-area button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .chat-input-area button:hover { opacity: 0.9; }
+  .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Quick actions */
+  .quick-actions {
+    padding: 8px 24px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .quick-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .quick-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* Right panel - Trace & Metrics */
+  .panel-right {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+    font-size: 12px;
+  }
+  .panel-right h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  /* Metrics grid */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .metric-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+  }
+  .metric-card .value { font-size: 22px; font-weight: 700; }
+  .metric-card .label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Trace log */
+  .trace-log { margin-bottom: 20px; }
+  .trace-entry {
+    background: var(--bg);
+    border-left: 3px solid var(--accent2);
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+  }
+  .trace-entry .stage { color: var(--accent2); font-weight: 600; }
+  .trace-entry .action { color: var(--text-dim); }
+  .trace-entry.tool { border-color: var(--green); }
+  .trace-entry.tool .stage { color: var(--green); }
+
+  /* Session info */
+  .session-info {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .session-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .session-row .key { color: var(--text-dim); }
+
+  /* Concept explainer */
+  .concept-box {
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .concept-box h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+  .concept-box p { font-size: 12px; line-height: 1.6; color: var(--text-dim); }
+  .concept-box code {
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--cyan);
+  }
+
+  /* Harness components list */
+  .component-list { margin-top: 16px; }
+  .component {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .component:last-child { border-bottom: none; }
+  .component .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .component .name { font-size: 12px; font-weight: 600; }
+  .component .status { font-size: 10px; color: var(--green); margin-left: auto; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; }
+    .panel-left, .panel-right { max-height: 300px; }
+  }
+
+  /* Welcome overlay */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .welcome h2 { font-size: 20px; margin-bottom: 12px; }
+  .welcome p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+  .welcome .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-size: 13px;
+    line-height: 2;
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .welcome .diagram .flow-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .welcome .diagram .flow-arrow {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 0 20px;
+  }
+  .welcome .diagram .highlight { color: var(--orange); font-weight: 700; }
+
+  /* Loading animation */
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  /* Tab navigation */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  .panel-center { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Diagrams page */
+  .diagrams-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  .diagram-section {
+    margin-bottom: 40px;
+  }
+  .diagram-section h2 {
+    font-size: 16px;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .diagram-section .subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .diagram-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+
+  /* SVG diagram styles */
+  .diagram-card svg { display: block; margin: 0 auto; }
+  .diagram-card svg text {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    fill: var(--text);
+  }
+  .diagram-card svg .node-rect {
+    rx: 8;
+    ry: 8;
+    stroke-width: 2;
+  }
+  .diagram-card svg .arrow-line {
+    stroke-width: 2;
+    fill: none;
+  }
+  .diagram-card svg .arrow-head {
+    stroke: none;
+  }
+  .diagram-card svg .label-text {
+    font-size: 11px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: white;
+    font-weight: 600;
+  }
+  .diagram-card svg .desc-text {
+    font-size: 9px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: #94a3b8;
+  }
+  .diagram-card svg .edge-label {
+    font-size: 9px;
+    fill: #94a3b8;
+    text-anchor: middle;
+  }
+
+  /* Animated pulse on SVG nodes */
+  @keyframes pulse-glow {
+    0%, 100% { filter: drop-shadow(0 0 0px transparent); }
+    50% { filter: drop-shadow(0 0 8px var(--accent)); }
+  }
+  .svg-node-animated { animation: pulse-glow 2s ease-in-out infinite; }
+  .svg-node-animated:nth-child(2) { animation-delay: 0.3s; }
+  .svg-node-animated:nth-child(3) { animation-delay: 0.6s; }
+  .svg-node-animated:nth-child(4) { animation-delay: 0.9s; }
+  .svg-node-animated:nth-child(5) { animation-delay: 1.2s; }
+
+  /* Comparison table */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .compare-col {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .compare-col h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-col.bad h3 { color: var(--red); }
+  .compare-col.good h3 { color: var(--green); }
+  .compare-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .compare-item .icon { flex-shrink: 0; font-size: 14px; }
+
+  /* Project mapping cards */
+  .project-map-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .project-map-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+  }
+  .project-map-card h3 {
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .harness-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 11px;
+    border-bottom: 1px solid var(--border);
+  }
+  .harness-row:last-child { border-bottom: none; }
+  .harness-row .h-label {
+    color: var(--text-dim);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+  .harness-row .h-value { color: var(--text); }
+  .harness-row .h-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Data flow animation for pipeline diagram */
+  @keyframes flow-packet {
+    0% { offset-distance: 0%; opacity: 0; }
+    5% { opacity: 1; }
+    95% { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0; }
+  }
+  .flow-dot {
+    offset-rotate: 0deg;
+    animation: flow-packet 4s linear infinite;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>AI Harness Demo</h1>
+    <span class="tag">INTERACTIVE</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11px; color:var(--text-dim)" id="mode-indicator">Mode: simulation</span>
+  </header>
+
+  <!-- Left Panel: Architecture -->
+  <div class="panel-left">
+    <h2>Harness Architecture</h2>
+    <div id="arch-diagram"></div>
+
+    <div class="examples">
+      <h2 style="margin-top:8px">Real-World Examples</h2>
+      <div id="examples-list"></div>
+    </div>
+  </div>
+
+  <!-- Center: Tabbed Content -->
+  <div class="panel-center">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('chat')">Chat</button>
+      <button class="tab-btn" onclick="switchTab('diagrams')">Diagrams</button>
+    </div>
+
+    <!-- Tab: Chat -->
+    <div class="tab-content active" id="tab-chat">
+      <div class="chat-messages" id="chat-messages">
+        <div class="welcome">
+          <h2>What is an AI Harness?</h2>
+          <p>
+            An AI harness is the <strong>orchestration layer</strong> between
+            users and an AI model. It's the middleware that makes raw AI useful
+            in real applications.
+          </p>
+          <div class="diagram">
+            <div class="flow-item"><span style="color:var(--accent)">User</span> sends a message</div>
+            <div class="flow-arrow">|</div>
+            <div class="flow-item"><span class="highlight">HARNESS</span> runs pre-processing middleware</div>
+            <div class="flow-arrow">|</div>
+            <div class="flow-item"><span class="highlight">HARNESS</span> loads session context &amp; history</div>
+            <div class="flow-arrow">|</div>
+            <div class="flow-item"><span style="color:var(--orange)">AI Model</span> generates a response</div>
+            <div class="flow-arrow">|</div>
+            <div class="flow-item"><span class="highlight">HARNESS</span> executes any tool calls</div>
+            <div class="flow-arrow">|</div>
+            <div class="flow-item"><span class="highlight">HARNESS</span> runs post-processing middleware</div>
+            <div class="flow-arrow">|</div>
+            <div class="flow-item"><span style="color:var(--accent)">User</span> receives the result</div>
+          </div>
+          <p>
+            Try the quick prompts below or type your own message. Watch the
+            <strong>trace panel</strong> on the right to see the harness
+            pipeline in action.
+          </p>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="sendQuick('What is an AI harness?')">What is a harness?</button>
+        <button class="quick-btn" onclick="sendQuick('How does middleware work?')">Middleware</button>
+        <button class="quick-btn" onclick="sendQuick('Explain tools and function calling')">Tool use</button>
+        <button class="quick-btn" onclick="sendQuick('How do sessions work?')">Sessions</button>
+        <button class="quick-btn" onclick="sendQuick('What time is it?')">Use clock tool</button>
+        <button class="quick-btn" onclick="sendQuick('Calculate 42 + 58 + 100')">Use calculator</button>
+        <button class="quick-btn" onclick="sendQuick('What is the weather?')">Use weather tool</button>
+        <button class="quick-btn" onclick="sendQuick('Describe the architecture')">Architecture</button>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" id="chat-input" placeholder="Ask about AI harnesses, or try a tool..." autofocus>
+        <button id="send-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <!-- Tab: Diagrams -->
+    <div class="tab-content" id="tab-diagrams">
+      <div class="diagrams-container">
+
+        <!-- Diagram 1: Core Pipeline Flow -->
+        <div class="diagram-section">
+          <h2>1. Core Harness Pipeline</h2>
+          <p class="subtitle">Every request flows through this pipeline. The harness orchestrates each step.</p>
+          <div class="diagram-card" id="diagram-pipeline"></div>
+        </div>
+
+        <!-- Diagram 2: Tool Use Loop -->
+        <div class="diagram-section">
+          <h2>2. Tool Use Loop</h2>
+          <p class="subtitle">When the AI needs external capabilities, the harness executes tools and feeds results back.</p>
+          <div class="diagram-card" id="diagram-toolloop"></div>
+        </div>
+
+        <!-- Diagram 3: With vs Without Harness -->
+        <div class="diagram-section">
+          <h2>3. Raw AI vs Harnessed AI</h2>
+          <p class="subtitle">What you lose without a harness, and what you gain with one.</p>
+          <div class="diagram-card">
+            <div class="compare-grid">
+              <div class="compare-col bad">
+                <h3>Without Harness (Raw API)</h3>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> Stateless - no memory between calls</div>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> No tool use - text in, text out only</div>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> No input validation or sanitization</div>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> No error recovery or retries</div>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> No observability or metrics</div>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> No response formatting or filtering</div>
+                <div class="compare-item"><span class="icon" style="color:var(--red)">x</span> One interface only (direct API)</div>
+              </div>
+              <div class="compare-col good">
+                <h3>With Harness (This Demo)</h3>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Session memory across conversations</div>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Tool registry - clock, calc, weather, etc.</div>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Input sanitization middleware</div>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Fallback from Claude CLI to simulation</div>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Request tracing, latency metrics</div>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Output formatting and length limits</div>
+                <div class="compare-item"><span class="icon" style="color:var(--green)">+</span> Web UI, REST API, extensible to any interface</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Diagram 4: Real-World Project Mapping -->
+        <div class="diagram-section">
+          <h2>4. Your Monorepo: 3 Harnesses, 1 Pattern</h2>
+          <p class="subtitle">Each project in this monorepo implements the same AI harness pattern with different interfaces.</p>
+          <div class="diagram-card">
+            <div class="project-map-grid">
+              <div class="project-map-card">
+                <h3>slack-bot</h3>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent)"></span><span class="h-label">Interface</span><span class="h-value">Slack Socket Mode</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent2)"></span><span class="h-label">Pre-process</span><span class="h-value">Command parsing, routing</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--cyan)"></span><span class="h-label">Sessions</span><span class="h-value">JSON files per thread</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--orange)"></span><span class="h-label">AI Engine</span><span class="h-value">claude -p subprocess</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--green)"></span><span class="h-label">Tools</span><span class="h-value">Bash, Read, Write, Edit</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent2)"></span><span class="h-label">Post-process</span><span class="h-value">3000 char truncation</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent)"></span><span class="h-label">Delivery</span><span class="h-value">Slack thread reply</span></div>
+              </div>
+              <div class="project-map-card">
+                <h3>chromeCC</h3>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent)"></span><span class="h-label">Interface</span><span class="h-value">Chrome Side Panel</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent2)"></span><span class="h-label">Pre-process</span><span class="h-value">Page context injection</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--cyan)"></span><span class="h-label">Sessions</span><span class="h-value">In-memory per tab</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--orange)"></span><span class="h-label">AI Engine</span><span class="h-value">claude -p via native host</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--green)"></span><span class="h-label">Tools</span><span class="h-value">Page content extraction</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent2)"></span><span class="h-label">Post-process</span><span class="h-value">Streaming chunks</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent)"></span><span class="h-label">Delivery</span><span class="h-value">Side panel chat UI</span></div>
+              </div>
+              <div class="project-map-card">
+                <h3>ai-harness-demo</h3>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent)"></span><span class="h-label">Interface</span><span class="h-value">Web UI (this app)</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent2)"></span><span class="h-label">Pre-process</span><span class="h-value">Sanitize, log, validate</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--cyan)"></span><span class="h-label">Sessions</span><span class="h-value">In-memory Map</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--orange)"></span><span class="h-label">AI Engine</span><span class="h-value">claude -p + fallback sim</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--green)"></span><span class="h-label">Tools</span><span class="h-value">Clock, Calculator, Weather</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent2)"></span><span class="h-label">Post-process</span><span class="h-value">Format, truncate</span></div>
+                <div class="harness-row"><span class="h-dot" style="background:var(--accent)"></span><span class="h-label">Delivery</span><span class="h-value">JSON over HTTP</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Diagram 5: Middleware Pipeline Detail -->
+        <div class="diagram-section">
+          <h2>5. Middleware Pipeline Detail</h2>
+          <p class="subtitle">Middleware wraps the AI call. Each function can transform the request or response.</p>
+          <div class="diagram-card" id="diagram-middleware"></div>
+        </div>
+
+        <!-- Diagram 6: Session Lifecycle -->
+        <div class="diagram-section">
+          <h2>6. Session Lifecycle</h2>
+          <p class="subtitle">Sessions give AI memory. Without session management, every message is isolated.</p>
+          <div class="diagram-card" id="diagram-session"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Trace & Metrics -->
+  <div class="panel-right">
+    <div class="concept-box">
+      <h3>How This Demo Works</h3>
+      <p>
+        This app <em>is</em> an AI harness. The server (<code>server.js</code>)
+        implements the full harness pattern: middleware pipeline,
+        session management, tool registry, and AI execution.
+        It tries <code>claude -p</code> first, falls back to simulation.
+      </p>
+    </div>
+
+    <h2>Pipeline Trace</h2>
+    <div class="trace-log" id="trace-log">
+      <div style="color:var(--text-dim); font-size:11px; padding:8px 0;">
+        Send a message to see the harness pipeline trace...
+      </div>
+    </div>
+
+    <h2>Metrics</h2>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="value" id="metric-requests">0</div>
+        <div class="label">Requests</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" id="metric-latency">0ms</div>
+        <div class="label">Avg Latency</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" id="metric-sessions">0</div>
+        <div class="label">Sessions</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" id="metric-errors">0</div>
+        <div class="label">Errors</div>
+      </div>
+    </div>
+
+    <h2>Harness Components</h2>
+    <div class="component-list" id="component-list"></div>
+
+    <h2 style="margin-top:16px">Session</h2>
+    <div class="session-info">
+      <div class="session-row"><span class="key">ID:</span><span id="session-id">-</span></div>
+      <div class="session-row"><span class="key">Messages:</span><span id="session-msgs">0</span></div>
+      <div class="session-row"><span class="key">Started:</span><span id="session-started">-</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sessionId = 'demo-' + Date.now().toString(36);
+let messageCount = 0;
+const sessionStart = new Date();
+
+document.getElementById('session-id').textContent = sessionId;
+document.getElementById('session-started').textContent = sessionStart.toLocaleTimeString();
+
+// Load architecture diagram
+fetch('/api/architecture').then(r => r.json()).then(data => {
+  const container = document.getElementById('arch-diagram');
+  data.layers.forEach((layer, i) => {
+    if (i > 0) {
+      const isToolLoop = (layer.id === 'tools' || data.layers[i-1]?.id === 'tools');
+      container.innerHTML += `<div class="arch-arrow ${isToolLoop ? 'bidirectional' : ''}">${isToolLoop ? '&#x21C5;' : '&#x25BC;'}</div>`;
+    }
+    container.innerHTML += `
+      <div class="arch-layer" style="border-color:${layer.color}" onclick="highlightLayer('${layer.id}')" id="layer-${layer.id}">
+        <div class="label" style="color:${layer.color}">${layer.label}</div>
+        <div class="desc">${layer.description}</div>
+      </div>`;
+  });
+
+  const exList = document.getElementById('examples-list');
+  data.examples.forEach(ex => {
+    exList.innerHTML += `
+      <div class="example-card">
+        <h3>${ex.name}</h3>
+        <div class="row"><span class="key">Interface:</span><span>${ex.interface}</span></div>
+        <div class="row"><span class="key">Session:</span><span>${ex.session}</span></div>
+        <div class="row"><span class="key">AI:</span><span>${ex.ai}</span></div>
+        <div class="row"><span class="key">Tools:</span><span>${ex.tools}</span></div>
+      </div>`;
+  });
+});
+
+// Load harness status
+function loadStatus() {
+  fetch('/api/status').then(r => r.json()).then(data => {
+    document.getElementById('metric-requests').textContent = data.metrics.requests;
+    document.getElementById('metric-latency').textContent = data.metrics.avgLatency + 'ms';
+    document.getElementById('metric-sessions').textContent = data.sessions;
+    document.getElementById('metric-errors').textContent = data.metrics.errors;
+
+    const compList = document.getElementById('component-list');
+    compList.innerHTML = '';
+    data.middleware.forEach(name => {
+      compList.innerHTML += `
+        <div class="component">
+          <div class="dot" style="background:var(--accent2)"></div>
+          <span class="name">${name}</span>
+          <span class="status">active</span>
+        </div>`;
+    });
+    data.tools.forEach(name => {
+      compList.innerHTML += `
+        <div class="component">
+          <div class="dot" style="background:var(--green)"></div>
+          <span class="name">${name}</span>
+          <span class="status">registered</span>
+        </div>`;
+    });
+  });
+}
+loadStatus();
+
+// Highlight architecture layer
+function highlightLayer(id) {
+  document.querySelectorAll('.arch-layer').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('layer-' + id);
+  if (el) el.classList.add('active');
+}
+
+// Animate layers during request
+function animatePipeline() {
+  const order = ['user', 'middleware-pre', 'session', 'ai', 'tools', 'ai', 'middleware-post', 'response'];
+  order.forEach((id, i) => {
+    setTimeout(() => highlightLayer(id), i * 200);
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.arch-layer').forEach(el => el.classList.remove('active'));
+  }, order.length * 200 + 500);
+}
+
+// Chat functions
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = '';
+  addMessage('user', message);
+  const loadingId = addLoading();
+  animatePipeline();
+
+  document.getElementById('send-btn').disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sessionId }),
+    });
+    const data = await res.json();
+
+    removeLoading(loadingId);
+    addMessage('assistant', data.response, data.metrics);
+    updateTrace(data.trace, data.metrics);
+    messageCount++;
+    document.getElementById('session-msgs').textContent = messageCount * 2;
+    loadStatus();
+
+    if (data.response && !data.response.includes('Error')) {
+      document.getElementById('mode-indicator').textContent = 'Mode: ' +
+        (data.metrics.latency > 2000 ? 'Claude CLI (live)' : 'simulation');
+    }
+  } catch (err) {
+    removeLoading(loadingId);
+    addMessage('assistant', 'Connection error: ' + err.message);
+  }
+
+  document.getElementById('send-btn').disabled = false;
+}
+
+function sendQuick(text) {
+  document.getElementById('chat-input').value = text;
+  sendMessage();
+}
+
+function addMessage(role, text, metrics) {
+  // Remove welcome message on first interaction
+  const welcome = document.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `
+    <div class="bubble">${escapeHtml(text)}</div>
+    ${metrics ? `<div class="meta">${metrics.latency}ms | ${metrics.historyLength} msgs in session</div>` : ''}
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addLoading() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  const id = 'loading-' + Date.now();
+  div.id = id;
+  div.className = 'msg assistant';
+  div.innerHTML = '<div class="bubble" style="color:var(--text-dim)">Processing through harness pipeline<span class="loading-dots"></span></div>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeLoading(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function updateTrace(trace, metrics) {
+  const container = document.getElementById('trace-log');
+  container.innerHTML = '';
+
+  // Always show the standard pipeline stages
+  const stages = [
+    { stage: 'loggingMiddleware', action: 'logged request', cls: '' },
+    { stage: 'sanitizationMiddleware', action: 'sanitized input', cls: '' },
+    { stage: 'sessionManager', action: `loaded history (${metrics.historyLength} msgs)`, cls: '' },
+    { stage: 'aiEngine', action: `generated response (${metrics.latency}ms)`, cls: '' },
+  ];
+
+  // Insert any tool calls
+  if (trace) {
+    trace.forEach(t => {
+      if (t.stage === 'tool-use') {
+        stages.push({ stage: 'toolExecutor', action: t.action, cls: 'tool' });
+      }
+    });
+  }
+
+  stages.push({ stage: 'formattingMiddleware', action: 'formatted output', cls: '' });
+  stages.push({ stage: 'delivery', action: 'sent to client', cls: '' });
+
+  stages.forEach((s, i) => {
+    setTimeout(() => {
+      container.innerHTML += `
+        <div class="trace-entry ${s.cls}">
+          <span class="stage">${s.stage}</span>
+          <span class="action"> ${s.action}</span>
+        </div>`;
+    }, i * 80);
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Enter to send
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// ---- Tab switching ----
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
+  if (tabId === 'diagrams') renderDiagrams();
+}
+
+// ---- SVG Diagram Rendering ----
+let diagramsRendered = false;
+
+function svgNode(tag, attrs, children = '') {
+  const a = Object.entries(attrs).map(([k,v]) => `${k}="${v}"`).join(' ');
+  return `<${tag} ${a}>${children}</${tag}>`;
+}
+
+function renderBox(x, y, w, h, fill, label, desc, id) {
+  return `
+    <g class="svg-node-animated" id="svg-${id}">
+      <rect class="node-rect" x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${fill}" opacity="0.15"/>
+      <rect class="node-rect" x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${fill}" opacity="0.6"/>
+      <text class="label-text" x="${x + w/2}" y="${y + h/2 - (desc ? 6 : 0)}" style="fill:${fill}">${label}</text>
+      ${desc ? `<text class="desc-text" x="${x + w/2}" y="${y + h/2 + 10}">${desc}</text>` : ''}
+    </g>`;
+}
+
+function renderArrow(x1, y1, x2, y2, color = '#475569', label = '') {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  const ux = dx/len, uy = dy/len;
+  const ax = x2 - ux*8, ay = y2 - uy*8;
+  return `
+    <line class="arrow-line" x1="${x1}" y1="${y1}" x2="${ax}" y2="${ay}" stroke="${color}"/>
+    <polygon class="arrow-head" points="${x2},${y2} ${ax - uy*5},${ay + ux*5} ${ax + uy*5},${ay - ux*5}" fill="${color}"/>
+    ${label ? `<text class="edge-label" x="${(x1+x2)/2 + 8}" y="${(y1+y2)/2 - 6}" fill="${color}">${label}</text>` : ''}`;
+}
+
+function renderDiagrams() {
+  if (diagramsRendered) return;
+  diagramsRendered = true;
+
+  // --- Diagram 1: Core Pipeline Flow ---
+  const pipeline = document.getElementById('diagram-pipeline');
+  const bw = 160, bh = 44, gap = 18, startX = 40;
+  const layers = [
+    { label: 'User Input', desc: 'message arrives', color: '#3b82f6', id: 'in' },
+    { label: 'Pre-Middleware', desc: 'sanitize, log', color: '#8b5cf6', id: 'pre' },
+    { label: 'Session Mgr', desc: 'load history', color: '#06b6d4', id: 'sess' },
+    { label: 'AI Engine', desc: 'Claude CLI / API', color: '#f59e0b', id: 'ai' },
+    { label: 'Tool Executor', desc: 'run functions', color: '#10b981', id: 'tool' },
+    { label: 'Post-Middleware', desc: 'format, filter', color: '#8b5cf6', id: 'post' },
+    { label: 'Response', desc: 'deliver to user', color: '#3b82f6', id: 'out' },
+  ];
+  const totalW = layers.length * (bw + gap) - gap + startX * 2;
+  let svg1 = `<svg width="${totalW}" height="140" viewBox="0 0 ${totalW} 140">`;
+  // Harness bracket
+  svg1 += `<rect x="${startX + bw + gap - 6}" y="8" width="${(bw + gap) * 5 + 12 - gap}" height="124" rx="12" fill="none" stroke="#f59e0b" stroke-dasharray="6 3" opacity="0.3"/>`;
+  svg1 += `<text x="${startX + bw + gap + (bw + gap) * 2.5 - gap/2}" y="24" text-anchor="middle" fill="#f59e0b" font-size="10" opacity="0.6">THE HARNESS</text>`;
+  layers.forEach((l, i) => {
+    const x = startX + i * (bw + gap);
+    const y = 38;
+    svg1 += renderBox(x, y, bw, bh, l.color, l.label, l.desc, 'p-' + l.id);
+    if (i < layers.length - 1) {
+      svg1 += renderArrow(x + bw, y + bh/2, x + bw + gap, y + bh/2, '#475569');
+    }
+  });
+  // Animated flow dot
+  svg1 += `<circle r="5" fill="#3b82f6" opacity="0.8">
+    <animate attributeName="cx" from="${startX}" to="${startX + (layers.length - 1) * (bw + gap) + bw}" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="cy" values="60;60" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;1;1;1;1;1;0" dur="3s" repeatCount="indefinite"/>
+  </circle>`;
+  svg1 += `</svg>`;
+  pipeline.innerHTML = svg1;
+
+  // --- Diagram 2: Tool Use Loop ---
+  const toolloop = document.getElementById('diagram-toolloop');
+  let svg2 = `<svg width="620" height="280" viewBox="0 0 620 280">`;
+  // Nodes
+  svg2 += renderBox(20, 100, 130, 50, '#3b82f6', 'User Message', '"what time?"', 'tl-user');
+  svg2 += renderBox(190, 100, 130, 50, '#8b5cf6', 'Harness', 'routes to AI', 'tl-harness');
+  svg2 += renderBox(360, 100, 130, 50, '#f59e0b', 'AI Model', 'decides action', 'tl-ai');
+  svg2 += renderBox(360, 10, 130, 50, '#10b981', 'Tool: clock', 'returns time', 'tl-tool');
+  svg2 += renderBox(360, 200, 130, 50, '#f59e0b', 'AI Model', 'final answer', 'tl-ai2');
+  svg2 += renderBox(530, 200, 80, 50, '#3b82f6', 'Reply', '', 'tl-reply');
+  // Arrows
+  svg2 += renderArrow(150, 125, 190, 125, '#475569', '');
+  svg2 += renderArrow(320, 125, 360, 125, '#475569', '');
+  svg2 += renderArrow(425, 100, 425, 60, '#10b981', 'TOOL_CALL:clock');
+  svg2 += renderArrow(425, 10, 325, 125, '#10b981', 'result');
+  // Dashed path for re-entry
+  svg2 += `<path d="M 320 125 Q 280 200, 360 225" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 3"/>`;
+  svg2 += `<text class="edge-label" x="290" y="185" fill="#f59e0b">+ tool result</text>`;
+  svg2 += renderArrow(490, 225, 530, 225, '#3b82f6', '');
+  // Labels
+  svg2 += `<text x="80" y="170" text-anchor="middle" fill="#94a3b8" font-size="10">Step 1</text>`;
+  svg2 += `<text x="250" y="170" text-anchor="middle" fill="#94a3b8" font-size="10">Step 2</text>`;
+  svg2 += `<text x="425" y="170" text-anchor="middle" fill="#94a3b8" font-size="10">Step 3</text>`;
+  svg2 += `<text x="425" y="265" text-anchor="middle" fill="#94a3b8" font-size="10">Step 4 (re-call)</text>`;
+  svg2 += `<text x="570" y="265" text-anchor="middle" fill="#94a3b8" font-size="10">Step 5</text>`;
+  svg2 += `</svg>`;
+  toolloop.innerHTML = svg2;
+
+  // --- Diagram 5: Middleware Pipeline Detail ---
+  const mwDiag = document.getElementById('diagram-middleware');
+  let svg3 = `<svg width="700" height="260" viewBox="0 0 700 260">`;
+  // The onion layers
+  const mws = [
+    { label: 'loggingMiddleware', color: '#8b5cf6', pre: 'Log timestamp + session', post: 'Log response status' },
+    { label: 'sanitizationMiddleware', color: '#06b6d4', pre: 'Strip <script> tags, XSS', post: '(pass through)' },
+    { label: 'formattingMiddleware', color: '#10b981', pre: '(pass through)', post: 'Truncate to 2000 chars' },
+  ];
+  // Outer wrapper
+  svg3 += `<rect x="10" y="10" width="680" height="240" rx="12" fill="none" stroke="#475569" stroke-dasharray="4 2" opacity="0.4"/>`;
+  svg3 += `<text x="350" y="30" text-anchor="middle" fill="#94a3b8" font-size="11">Request enters from left, response exits to right</text>`;
+  // Draw onion rings
+  mws.forEach((mw, i) => {
+    const pad = 30 + i * 55;
+    const rx = 10 + i * 20;
+    const ry = 45 + i * 10;
+    const rw = 680 - i * 40;
+    const rh = 200 - i * 20;
+    svg3 += `<rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" rx="8" fill="${mw.color}" opacity="0.07" stroke="${mw.color}" stroke-width="1.5" opacity="0.3"/>`;
+    svg3 += `<text x="${rx + 8}" y="${ry + 14}" fill="${mw.color}" font-size="10" font-weight="600">${mw.label}</text>`;
+    // Pre label (left side)
+    svg3 += `<text x="${rx + 8}" y="${ry + rh - 8}" fill="${mw.color}" font-size="9" opacity="0.7">pre: ${mw.pre}</text>`;
+    // Post label (right side)
+    svg3 += `<text x="${rx + rw - 8}" y="${ry + rh - 8}" fill="${mw.color}" font-size="9" opacity="0.7" text-anchor="end">post: ${mw.post}</text>`;
+  });
+  // Center: AI call
+  svg3 += renderBox(250, 110, 200, 44, '#f59e0b', 'AI Engine Call', 'Claude CLI / simulation', 'mw-ai');
+  // Flow arrows
+  svg3 += renderArrow(30, 130, 250, 130, '#8b5cf6');
+  svg3 += renderArrow(450, 130, 660, 130, '#8b5cf6');
+  svg3 += `<text x="140" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">pre-processing &rarr;</text>`;
+  svg3 += `<text x="555" y="120" text-anchor="middle" fill="#94a3b8" font-size="10">&larr; post-processing</text>`;
+  svg3 += `</svg>`;
+  mwDiag.innerHTML = svg3;
+
+  // --- Diagram 6: Session Lifecycle ---
+  const sessDiag = document.getElementById('diagram-session');
+  let svg4 = `<svg width="680" height="220" viewBox="0 0 680 220">`;
+  const states = [
+    { x: 20, label: 'New User', desc: 'no session exists', color: '#94a3b8' },
+    { x: 150, label: 'Create Session', desc: 'assign ID, init []', color: '#06b6d4' },
+    { x: 290, label: 'Append Message', desc: 'user msg + AI reply', color: '#3b82f6' },
+    { x: 430, label: 'Build Context', desc: 'inject history into prompt', color: '#f59e0b' },
+    { x: 560, label: 'Persist', desc: 'save for next request', color: '#10b981' },
+  ];
+  states.forEach((s, i) => {
+    svg4 += renderBox(s.x, 50, 120, 50, s.color, s.label, s.desc, 'ss-' + i);
+    if (i < states.length - 1) {
+      svg4 += renderArrow(s.x + 120, 75, states[i+1].x, 75, '#475569');
+    }
+  });
+  // Loop arrow back from Persist to Append
+  svg4 += `<path d="M 620 110 Q 620 180 430 180 Q 280 180 290 110" fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="6 3"/>`;
+  svg4 += `<polygon points="290,110 285,120 295,120" fill="#10b981"/>`;
+  svg4 += `<text x="460" y="195" text-anchor="middle" fill="#10b981" font-size="10">next message in session</text>`;
+  // Example data
+  svg4 += `<text x="340" y="25" text-anchor="middle" fill="#94a3b8" font-size="11">Session: { id: "demo-abc", history: [{role:"user",...}, {role:"assistant",...}], createdAt: ... }</text>`;
+  svg4 += `</svg>`;
+  sessDiag.innerHTML = svg4;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "ai-harness-demo",
+  "version": "1.0.0",
+  "description": "Interactive demo showing what an AI harness is and how to build one",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["ai", "harness", "demo", "claude"],
+  "license": "MIT"
+}
