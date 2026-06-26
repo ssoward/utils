@@ -131,7 +131,8 @@ enum GmailFetcher {
         return data
     }
 
-    private static func formEncode(_ params: [String: String]) -> String {
+    // internal (not private) so unit tests can exercise the pure helpers.
+    static func formEncode(_ params: [String: String]) -> String {
         var allowed = CharacterSet.urlQueryAllowed
         allowed.remove(charactersIn: "&=+")
         return params
@@ -139,7 +140,7 @@ enum GmailFetcher {
             .joined(separator: "&")
     }
 
-    private static func rfc2822Date(_ s: String) -> Date? {
+    static func rfc2822Date(_ s: String) -> Date? {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"

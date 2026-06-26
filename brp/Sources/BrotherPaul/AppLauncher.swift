@@ -162,7 +162,7 @@ enum AppLauncher {
             let prefix = verb == "started" ? "Good morning. " : ""
             let suffix = detail.map { " — \($0)" } ?? ""
             content.body = "\(prefix)\(mode.name) session \(verb)\(suffix)."
-            content.sound = .default
+            // Silent banner: no notification sound (avoids the startup/session beep).
 
             let request = UNNotificationRequest(
                 identifier: UUID().uuidString,

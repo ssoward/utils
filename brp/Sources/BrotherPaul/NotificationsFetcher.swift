@@ -96,7 +96,8 @@ enum NotificationsFetcher {
 
     // MARK: - Payload parsing
 
-    private struct Payload {
+    // internal (not private) so unit tests can construct and assert on parsed payloads.
+    struct Payload {
         var title: String = ""
         var subtitle: String = ""
         var body: String = ""
@@ -105,7 +106,7 @@ enum NotificationsFetcher {
     /// Notification payloads are Cocoa binary plists. Schema varies across
     /// macOS versions; we look in `req` (recent versions) and fall back to
     /// scanning common keys at the top level.
-    private static func parsePayload(_ data: Data) -> Payload? {
+    static func parsePayload(_ data: Data) -> Payload? {
         guard let raw = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) else {
             return nil
         }
