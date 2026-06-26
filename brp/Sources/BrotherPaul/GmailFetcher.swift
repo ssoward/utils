@@ -50,11 +50,7 @@ enum GmailFetcher {
             let snippet = String(data: data, encoding: .utf8) ?? "(no body)"
             throw NSError(domain: "Gmail", code: 1, userInfo: [NSLocalizedDescriptionKey: "token refresh \((response as? HTTPURLResponse)?.statusCode ?? -1): \(snippet)"])
         }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-        guard let token = json["access_token"] as? String else {
-            throw NSError(domain: "Gmail", code: 2, userInfo: [NSLocalizedDescriptionKey: "no access_token in response"])
-        }
-        return token
+        return try parseAccessToken(data)
     }
 
     // MARK: - Gmail API
@@ -66,9 +62,7 @@ enum GmailFetcher {
             URLQueryItem(name: "maxResults", value: "20"),
         ]
         let data = try await get(comps.url!, token: token)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-        let messages = json["messages"] as? [[String: Any]] ?? []
-        return messages.compactMap { $0["id"] as? String }
+        return parseMessageIDs(data)
     }
 
     private static func fetchMessage(id: String, token: String, vipSenders: [String]) async throws -> DigestItem? {
@@ -80,7 +74,32 @@ enum GmailFetcher {
             URLQueryItem(name: "metadataHeaders", value: "Date"),
         ]
         let data = try await get(comps.url!, token: token)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        return parseMessage(data, id: id, vipSenders: vipSenders)
+    }
+
+    // MARK: - Pure parsers (network-free, unit-tested)
+
+    /// Extracts the `access_token` from a Google OAuth token-refresh response.
+    /// Throws if the field is absent (surfaces as an auth error).
+    static func parseAccessToken(_ data: Data) throws -> String {
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        guard let token = json["access_token"] as? String else {
+            throw NSError(domain: "Gmail", code: 2, userInfo: [NSLocalizedDescriptionKey: "no access_token in response"])
+        }
+        return token
+    }
+
+    /// Extracts message IDs from a `users.messages.list` response. Malformed
+    /// bodies yield an empty list rather than an error.
+    static func parseMessageIDs(_ data: Data) -> [String] {
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        let messages = json["messages"] as? [[String: Any]] ?? []
+        return messages.compactMap { $0["id"] as? String }
+    }
+
+    /// Builds a DigestItem from a `users.messages.get` (metadata) response.
+    static func parseMessage(_ data: Data, id: String, vipSenders: [String]) -> DigestItem? {
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
         let payload = json["payload"] as? [String: Any]
         let headers = payload?["headers"] as? [[String: String]] ?? []
         var subject = "(no subject)"
@@ -100,12 +119,7 @@ enum GmailFetcher {
             return rfc2822Date(dateStr)
         }()
 
-        let isVIP = vipSenders.contains { vip in
-            let v = vip.lowercased()
-            return !v.isEmpty && from.lowercased().contains(v)
-        }
-        let priority = isVIP ? 90 : 50
-
+        let priority = VIPMatcher.isVIP(haystacks: [from], vipSenders: vipSenders) ? 90 : 50
         let openURL = URL(string: "https://mail.google.com/mail/u/0/#inbox/\(id)")
         return DigestItem(
             source: .gmail,
@@ -131,7 +145,8 @@ enum GmailFetcher {
         return data
     }
 
-    private static func formEncode(_ params: [String: String]) -> String {
+    // internal (not private) so unit tests can exercise the pure helpers.
+    static func formEncode(_ params: [String: String]) -> String {
         var allowed = CharacterSet.urlQueryAllowed
         allowed.remove(charactersIn: "&=+")
         return params
@@ -139,7 +154,7 @@ enum GmailFetcher {
             .joined(separator: "&")
     }
 
-    private static func rfc2822Date(_ s: String) -> Date? {
+    static func rfc2822Date(_ s: String) -> Date? {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"

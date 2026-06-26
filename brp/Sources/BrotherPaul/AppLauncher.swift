@@ -3,7 +3,17 @@ import UserNotifications
 
 enum AppLauncher {
 
+    /// Test seam: when set, `launch`/`end` record the session intent here and
+    /// skip all real side effects (opening/quitting apps, posting banners).
+    /// Always nil in production — acceptance tests install and reset it.
+    static var sessionSink: ((_ verb: String, _ mode: LaunchMode) -> Void)?
+
     static func launch(mode: LaunchMode, hideOthers: Bool) {
+        if let sessionSink {
+            sessionSink("started", mode)
+            return
+        }
+
         NSLog("BrotherPaul: launching mode '%@' with %d app(s)", mode.name, mode.apps.count)
 
         for appName in mode.apps {
@@ -30,6 +40,11 @@ enum AppLauncher {
     /// unsaved work get their normal save prompt. Brother Paul never quits
     /// itself.
     static func end(mode: LaunchMode) {
+        if let sessionSink {
+            sessionSink("ended", mode)
+            return
+        }
+
         NSLog("BrotherPaul: ending mode '%@' (%d configured app(s))", mode.name, mode.apps.count)
 
         let myBundle = Bundle.main.bundleIdentifier
@@ -162,7 +177,7 @@ enum AppLauncher {
             let prefix = verb == "started" ? "Good morning. " : ""
             let suffix = detail.map { " — \($0)" } ?? ""
             content.body = "\(prefix)\(mode.name) session \(verb)\(suffix)."
-            content.sound = .default
+            // Silent banner: no notification sound (avoids the startup/session beep).
 
             let request = UNNotificationRequest(
                 identifier: UUID().uuidString,

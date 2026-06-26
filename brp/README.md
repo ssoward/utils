@@ -424,6 +424,38 @@ brpaul/
 
 ---
 
+## Testing & CI
+
+Run the full suite (159 tests, ~0.1s, no network):
+
+```bash
+swift test
+```
+
+The suite is unit-heavy with one acceptance-level smoke test. Coverage by area:
+
+- **Pure logic** — config decoding & `mode(named:)`, digest sorting, VIP /
+  notification-blocklist matching, `brotherpaul://` URL parsing, snap zones,
+  verse rotation, agent tool risk/confirmation, voice session controller.
+- **Mail fetchers** — the network-free response parsers extracted from
+  `GmailFetcher` / `GraphMailFetcher` (`parseAccessToken`, `parseMessage(s)`,
+  `parseMessageIDs`) are tested against captured Gmail + Graph JSON payloads.
+  The `URLSession` calls themselves are thin and intentionally not tested.
+- **Acceptance** — `URLLaunchAcceptanceTests` boots a real `AppDelegate` and
+  drives the `brotherpaul://start` / `stop` path end-to-end, asserting the
+  session reaches `AppLauncher`. A test-only `AppLauncher.sessionSink` seam
+  intercepts the launch so **no real apps are opened or quit**. The test
+  isolates its config in a temp dir (`BROTHERPAUL_CONFIG_DIR`).
+
+**Not covered (manual verification):** AppKit/SwiftUI UI (`MenuBarController`,
+`SettingsView`, Mission Control views), the live `URLSession`/`EventKit`/
+AppleScript I/O inside the fetchers, and Carbon hotkey registration.
+
+CI runs `swift build` + `swift test` on `macos-14` for every push and PR that
+touches `brp/**`, via [`.github/workflows/brp-ci.yml`](../.github/workflows/brp-ci.yml).
+
+---
+
 ## Troubleshooting
 
 **Hotkeys don't do anything.**

@@ -59,10 +59,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - URL scheme: brotherpaul://start?mode=Deep%20Work or brotherpaul://stop
 
     @objc func handleURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
-        guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
-              let action = URLActionParser.parse(urlString) else {
+        guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue else {
             return
         }
+        handle(urlString: urlString)
+    }
+
+    /// Parses a brotherpaul:// URL and dispatches to launch/end. Separated from
+    /// the Apple Event plumbing so it can be driven directly by tests.
+    func handle(urlString: String) {
+        guard let action = URLActionParser.parse(urlString) else { return }
 
         switch action {
         case .start(let mode):
