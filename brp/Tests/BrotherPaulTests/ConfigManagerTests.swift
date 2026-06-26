@@ -12,6 +12,12 @@ final class ConfigManagerTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
+        // Restore the shared singleton's in-memory config to default so this
+        // suite can't pollute others that assume AppConfig.default. `config` is
+        // private(set), and write(_:) is the only public way to reset it — run
+        // it while the env var still points at tmp so we don't touch the real
+        // user config, then remove tmp.
+        try? ConfigManager.shared.write(.default)
         unsetenv("BROTHERPAUL_CONFIG_DIR")
         try? FileManager.default.removeItem(at: tmp)
     }
