@@ -114,6 +114,15 @@ Each `apps` entry is a macOS application name (the same name as in
 `/Applications`, without the `.app`). `urls` entries are opened in your
 default browser after the apps launch.
 
+**Use the app's exact display name.** Launching is forgiving (it also tries
+several `/Applications` paths and bundle identifiers), but **ending a session
+quits only the apps whose configured name matches a running app's display name
+or bundle identifier, case-insensitively**. A short nickname won't match — for
+example, use `Microsoft Teams` (not `Teams`), `Microsoft Outlook` (not
+`Outlook`), and `Slack`. If **End Session** leaves an app running, the usual
+cause is a name mismatch: check the app's name in `/Applications` and copy it
+verbatim. Apps not listed in the active mode are never touched.
+
 After editing, choose **Reload Config** from the menu.
 
 ---
