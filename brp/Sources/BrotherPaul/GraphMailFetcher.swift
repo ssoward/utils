@@ -49,11 +49,7 @@ enum GraphMailFetcher {
                 userInfo: [NSLocalizedDescriptionKey: "token refresh: \(snippet)"]
             )
         }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-        guard let token = json["access_token"] as? String else {
-            throw NSError(domain: "Graph", code: 2, userInfo: [NSLocalizedDescriptionKey: "no access_token in response"])
-        }
-        return token
+        return try parseAccessToken(data)
     }
 
     // MARK: - /me/messages
@@ -84,7 +80,25 @@ enum GraphMailFetcher {
             )
         }
 
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        return parseMessages(data, vipSenders: vipSenders)
+    }
+
+    // MARK: - Pure parsers (network-free, unit-tested)
+
+    /// Extracts the `access_token` from a Microsoft identity token-refresh
+    /// response. Throws if the field is absent (surfaces as an auth error).
+    static func parseAccessToken(_ data: Data) throws -> String {
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        guard let token = json["access_token"] as? String else {
+            throw NSError(domain: "Graph", code: 2, userInfo: [NSLocalizedDescriptionKey: "no access_token in response"])
+        }
+        return token
+    }
+
+    /// Builds DigestItems from a Graph `/me/messages` response. Malformed
+    /// bodies yield an empty list rather than an error.
+    static func parseMessages(_ data: Data, vipSenders: [String]) -> [DigestItem] {
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
         let messages = json["value"] as? [[String: Any]] ?? []
 
         // receivedDateTime is ISO-8601 UTC: "2026-05-31T14:23:00Z"
@@ -106,14 +120,8 @@ enum GraphMailFetcher {
             let senderAddr = fromObj?["address"] as? String ?? ""
             let sender = senderName.isEmpty ? senderAddr : senderName
 
-            let isVIP = vipSenders.contains { vip in
-                let v = vip.lowercased()
-                return !v.isEmpty
-                    && (sender.lowercased().contains(v)
-                        || senderAddr.lowercased().contains(v)
-                        || subject.lowercased().contains(v))
-            }
-            let priority = isVIP ? 90 : 50
+            let priority = VIPMatcher.isVIP(haystacks: [sender, senderAddr, subject],
+                                            vipSenders: vipSenders) ? 90 : 50
 
             items.append(DigestItem(
                 source: .outlook,

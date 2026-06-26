@@ -1,0 +1,38 @@
+name: brp CI
+
+# Brother Paul (brp/) is a Swift Package macOS app. Run its test suite on every
+# push and PR that touches brp/. Scoped by path so unrelated projects in this
+# monorepo don't trigger it.
+on:
+  push:
+    paths:
+      - "brp/**"
+      - ".github/workflows/brp-ci.yml"
+  pull_request:
+    paths:
+      - "brp/**"
+      - ".github/workflows/brp-ci.yml"
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: brp-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: build & test
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: brp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build -v
+
+      - name: Run tests
+        run: swift test -v
