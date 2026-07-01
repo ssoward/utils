@@ -57,6 +57,7 @@ struct MissionControlConfig: Codable {
     var includeGraphMail: Bool
     var includeGmail: Bool
     var includeNotifications: Bool
+    var includeReminders: Bool
     var includeVerseOfDay: Bool
     /// Look-back / look-ahead window in hours.
     var lookbackHours: Int
@@ -79,6 +80,7 @@ struct MissionControlConfig: Codable {
         includeGraphMail: false,
         includeGmail: false,
         includeNotifications: true,
+        includeReminders: true,
         includeVerseOfDay: true,
         lookbackHours: 24,
         vipSenders: [],
@@ -90,7 +92,7 @@ struct MissionControlConfig: Codable {
     )
 
     enum CodingKeys: String, CodingKey {
-        case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGraphMail, includeGmail, includeNotifications, includeVerseOfDay
+        case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGraphMail, includeGmail, includeNotifications, includeReminders, includeVerseOfDay
         case lookbackHours, vipSenders, notificationAppBlocklist, openOnStartWork, quickLinks, gmail, graph
     }
 
@@ -102,6 +104,7 @@ struct MissionControlConfig: Codable {
         includeGraphMail: Bool,
         includeGmail: Bool,
         includeNotifications: Bool,
+        includeReminders: Bool,
         includeVerseOfDay: Bool,
         lookbackHours: Int,
         vipSenders: [String],
@@ -118,6 +121,7 @@ struct MissionControlConfig: Codable {
         self.includeGraphMail = includeGraphMail
         self.includeGmail = includeGmail
         self.includeNotifications = includeNotifications
+        self.includeReminders = includeReminders
         self.includeVerseOfDay = includeVerseOfDay
         self.lookbackHours = lookbackHours
         self.vipSenders = vipSenders
@@ -138,6 +142,7 @@ struct MissionControlConfig: Codable {
         includeGraphMail = try c.decodeIfPresent(Bool.self, forKey: .includeGraphMail) ?? d.includeGraphMail
         includeGmail = try c.decodeIfPresent(Bool.self, forKey: .includeGmail) ?? d.includeGmail
         includeNotifications = try c.decodeIfPresent(Bool.self, forKey: .includeNotifications) ?? d.includeNotifications
+        includeReminders = try c.decodeIfPresent(Bool.self, forKey: .includeReminders) ?? d.includeReminders
         includeVerseOfDay = try c.decodeIfPresent(Bool.self, forKey: .includeVerseOfDay) ?? d.includeVerseOfDay
         lookbackHours = try c.decodeIfPresent(Int.self, forKey: .lookbackHours) ?? d.lookbackHours
         vipSenders = try c.decodeIfPresent([String].self, forKey: .vipSenders) ?? d.vipSenders

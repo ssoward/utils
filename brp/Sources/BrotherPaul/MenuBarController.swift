@@ -61,6 +61,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         mcItem.target = self
         menu.addItem(mcItem)
 
+        let todoItem = NSMenuItem(
+            title: "New Todo…",
+            action: #selector(newTodo),
+            keyEquivalent: "t"
+        )
+        todoItem.target = self
+        menu.addItem(todoItem)
+
         let modesMenu = NSMenu(title: "Modes")
         for mode in config.modes {
             let item = NSMenuItem(
@@ -269,6 +277,28 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func showMissionControl() {
         onShowMissionControl?()
+    }
+
+    /// Fast todo capture from the menu bar: title-only prompt. Set a due time /
+    /// reminder from the Mission Control quick-add or the Reminders app.
+    @objc private func newTodo() {
+        let alert = NSAlert()
+        alert.messageText = "New Todo"
+        alert.informativeText = "Add a reminder to your default Reminders list."
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.placeholderString = "e.g. Email the quarterly report"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let title = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        Task { await RemindersFetcher.addReminder(title: title) }
     }
 
     @objc private func openConfigFile() {

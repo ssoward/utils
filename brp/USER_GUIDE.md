@@ -213,6 +213,12 @@ Brother Paul builds a one-pager:
    • Gmail     "FYI: prod alert"  ops-bot…  2h ago
    • …
 
+✅ Todos & Reminders  (3)
+   [ Add a todo…                     🔔  Add ]
+   • ○  Email the quarterly report   Overdue · Mon 9:00 AM
+   • ○  Call the plumber             Due 2:30 PM
+   • ○  Renew car registration       No due date
+
 🔔 Recent Notifications  (12)
    • Slack       "@you on #incidents"     3h ago
    • Calendar    "Sprint Planning soon"   1h ago
@@ -228,6 +234,22 @@ window — click another app to bring that app forward; close Mission
 Control with **✕** or **⌘W** when you're done. (⌘Q does nothing here —
 Brother Paul is an accessory app with no main menu, so the system has
 nothing to bind ⌘Q to. Quit the whole app from 🧠 → **Quit**.)
+
+### Todos & Reminders
+
+Brother Paul reads your **macOS Reminders** and shows the ones that matter
+now — anything overdue, undated, or due within the look-ahead window —
+most-urgent first. To capture a new one:
+
+- **In Mission Control:** type into the "Add a todo…" row and hit **Add**
+  (or Return). Tap the 🔔 button first to reveal a date/time picker — todos
+  with a due time get an alarm, so macOS notifies you when they come due.
+- **From the menu bar:** 🧠 → **New Todo…** (`⌘T`) for a quick title-only
+  capture without opening the window.
+
+Tap the ○ next to any todo to mark it complete — it drops off the list on
+the next refresh. Everything lives in your default Reminders list, so it
+syncs to your iPhone and stays in sync if you complete it elsewhere.
 
 ### Quick Links
 
@@ -248,6 +270,7 @@ have to set them all up at once — disabled sections just say "denied" or
 | Events         | **Calendars** — macOS prompts you on first run                      |
 | Outlook        | **Automation → Microsoft Outlook** — macOS prompts on first script  |
 | Gmail          | One-time **OAuth** — run `./bin/brpaul-gmail-auth.sh` (below)       |
+| Todos          | **Reminders** — macOS prompts you the first time it runs            |
 | Notifications  | **Full Disk Access** — drag BrotherPaul.app in manually             |
 
 ### VIPs

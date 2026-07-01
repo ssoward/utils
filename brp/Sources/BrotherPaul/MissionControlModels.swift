@@ -5,6 +5,7 @@ enum DigestSource: String {
     case outlook
     case gmail
     case notifications
+    case reminders
 }
 
 struct DigestItem: Identifiable {
@@ -17,6 +18,27 @@ struct DigestItem: Identifiable {
     let priority: Int
     /// Optional click target (URL or app-deep-link).
     let openURL: URL?
+    /// Identifier of the backing external object (e.g. an EKReminder), when the
+    /// row supports actions like "complete". nil for read-only sources.
+    let externalID: String?
+
+    init(
+        source: DigestSource,
+        title: String,
+        subtitle: String?,
+        timestamp: Date?,
+        priority: Int,
+        openURL: URL?,
+        externalID: String? = nil
+    ) {
+        self.source = source
+        self.title = title
+        self.subtitle = subtitle
+        self.timestamp = timestamp
+        self.priority = priority
+        self.openURL = openURL
+        self.externalID = externalID
+    }
 }
 
 struct SectionResult {
@@ -30,5 +52,6 @@ struct Digest {
     var verse: Verse?
     var events: SectionResult
     var emails: SectionResult
+    var reminders: SectionResult
     var notifications: SectionResult
 }

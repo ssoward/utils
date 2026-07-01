@@ -50,6 +50,7 @@
     "includeGraphCalendar": false,
     "includeGmail": false,
     "includeNotifications": true,
+    "includeReminders": true,
     "lookbackHours": 24,
     "vipSenders": [],
     "notificationAppBlocklist": [],

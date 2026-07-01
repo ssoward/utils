@@ -9,9 +9,11 @@ A native macOS menu bar app that:
   or drag-to-edge.
 - Shows a **Mission Control digest** of upcoming events (EventKit +
   Microsoft Graph), priority email (Outlook AppleScript + Gmail API),
-  recent notifications (NotificationCenter DB), and a **daily Christ-focused
-  verse** rotated from a 132-passage library of the Book of Mormon and
-  the KJV Gospels.
+  **todos & reminders** (macOS Reminders / EventKit), recent notifications
+  (NotificationCenter DB), and a **daily Christ-focused verse** rotated from
+  a 132-passage library of the Book of Mormon and the KJV Gospels.
+- **Captures todos and reminders** — add them from the menu bar or Mission
+  Control; those with a due time fire a native macOS reminder notification.
 
 Local, private, configurable via JSON.
 
@@ -40,6 +42,30 @@ with the default apps and modes (Full / Deep Work / Meetings / Admin).
 
 ---
 
+## Launch at login
+
+Brother Paul is a menu-bar (`LSUIElement`) app, so it starts at **login** —
+the earliest a GUI/menu-bar app can run (there's no window-server session
+before login, so a pre-login `LaunchDaemon` can't host the menu-bar UI).
+
+Install the per-user LaunchAgent once — it's idempotent and safe to re-run
+after a redeploy:
+
+```bash
+./bin/install-login-item.sh              # install + load now, and at every login
+./bin/install-login-item.sh --uninstall  # stop launching at login
+```
+
+It writes `~/Library/LaunchAgents/com.sls.brotherpaul.plist` (from the template
+in `Resources/`, resolving the app in `/Applications` or `~/Applications`) with
+`RunAtLoad`, then loads it via `launchctl bootstrap`. Verify with:
+
+```bash
+launchctl print gui/$(id -u)/com.sls.brotherpaul | grep -E 'state|program|runatload'
+```
+
+---
+
 ## Menu bar
 
 Click the brain icon in the menu bar:
@@ -52,6 +78,9 @@ Click the brain icon in the menu bar:
   Mission Control or the Settings window with `⌘W`. (`⌘Q` does nothing
   on these windows — Brother Paul is an accessory app with no main menu;
   quit the whole app from this menu's **Quit** item.)
+- **New Todo…** (`⌘T`) — quick-capture a todo into your default macOS
+  Reminders list. For a due time / reminder alert, use the quick-add row in
+  Mission Control.
 - **Modes ▸** — pick Deep Work, Meetings, Admin, or any custom mode
 - **Hide Other Apps After Launch** — toggle "hide others after launch"
 - **Snap Focused Window ▸** — snap to half / quarter / maximize / center;
@@ -241,6 +270,11 @@ A daily digest window that surfaces:
   added to Internet Accounts).
 - **Priority email** — unread Outlook mail (AppleScript bridge) and unread
   Gmail (Gmail REST API), with VIP-sender boost.
+- **Todos & reminders** — open items from the macOS Reminders app (EventKit):
+  overdue and undated todos plus anything due within the look-ahead window,
+  sorted most-urgent-first. Add one inline with the quick-add row (optional
+  due time), or check it off to mark it complete. Reminders with a due time
+  carry an alarm, so macOS notifies you when they come due.
 - **Recent notifications** — last *N* hours of macOS Notification Center,
   read directly from its SQLite database (requires Full Disk Access).
 
@@ -260,6 +294,7 @@ Open it via:
 | `includeGraphCalendar`                     | `false` | Call Microsoft Graph for Outlook events (recommended Outlook path) |
 | `includeGmail`                             | `false` | Call Gmail API (needs OAuth setup)                  |
 | `includeNotifications`                     | `true`  | Read NotificationCenter DB (needs Full Disk Access) |
+| `includeReminders`                         | `true`  | Read/write macOS Reminders for the Todos section (needs Reminders access) |
 | `includeVerseOfDay`                        | `true`  | Show the daily verse card at the top of the digest  |
 | `lookbackHours`                            | `24`    | Window for email + notifications, lookahead for events |
 | `vipSenders[]`                             | `[]`    | Substrings matched against from / display name      |
@@ -290,6 +325,8 @@ Open it via:
 The first time each section runs you'll see a prompt:
 
 - **Calendar** — System Settings → Privacy & Security → **Calendars**.
+- **Reminders** — System Settings → Privacy & Security → **Reminders**,
+  prompted the first time the Todos section runs or you add a todo.
 - **Automation** (for Outlook) — granted on the first AppleScript call;
   configured under **Automation** in Privacy & Security.
 - **Full Disk Access** (for notification history) — drop
@@ -368,6 +405,7 @@ The first launch may prompt for:
   Open **System Settings → Privacy & Security → Accessibility** and enable
   Brother Paul.
 - **Calendars** — Mission Control's Events section.
+- **Reminders** — Mission Control's Todos section and the **New Todo…** command.
 - **Automation** (Microsoft Outlook) — Mission Control's Email section.
 - **Full Disk Access** — Mission Control's Notifications section (manual
   add; macOS doesn't prompt).
@@ -408,6 +446,7 @@ brpaul/
 │   ├── GmailFetcher.swift              # Gmail REST + OAuth refresh
 │   ├── GraphCalendarFetcher.swift      # Microsoft Graph /me/calendarview
 │   ├── NotificationsFetcher.swift      # SQLite → NotificationCenter db
+│   ├── RemindersFetcher.swift          # EventKit reminders read/add/complete
 │   └── VerseOfTheDay.swift             # 132-verse rotation, file-overridable
 ├── Resources/
 │   ├── Info.plist              # Bundle metadata + usage descriptions

@@ -6,8 +6,14 @@ struct MissionControlView: View {
 
     @AppStorage("mc.expand.events")        private var expandEvents = true
     @AppStorage("mc.expand.emails")        private var expandEmails = true
+    @AppStorage("mc.expand.todos")         private var expandTodos = true
     @AppStorage("mc.expand.notifications") private var expandNotifications = true
     @AppStorage("mc.expand.links")         private var expandLinks = true
+
+    // Quick-add todo state.
+    @State private var newTodoTitle: String = ""
+    @State private var newTodoHasDue: Bool = false
+    @State private var newTodoDue: Date = Date().addingTimeInterval(3600)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -35,6 +41,7 @@ struct MissionControlView: View {
                             isExpanded: $expandEmails,
                             emptyText: "Inbox zero."
                         )
+                        todosSection(digest.reminders)
                         section(
                             title: "Recent Notifications",
                             icon: "bell.fill",
@@ -49,12 +56,12 @@ struct MissionControlView: View {
                 HStack(spacing: 12) {
                     Button("Expand all") {
                         withAnimation(.easeInOut(duration: 0.18)) {
-                            expandEvents = true; expandEmails = true; expandNotifications = true; expandLinks = true
+                            expandEvents = true; expandEmails = true; expandTodos = true; expandNotifications = true; expandLinks = true
                         }
                     }
                     Button("Collapse all") {
                         withAnimation(.easeInOut(duration: 0.18)) {
-                            expandEvents = false; expandEmails = false; expandNotifications = false; expandLinks = false
+                            expandEvents = false; expandEmails = false; expandTodos = false; expandNotifications = false; expandLinks = false
                         }
                     }
                     Spacer()
@@ -275,6 +282,109 @@ struct MissionControlView: View {
         .onTapGesture {
             if let url = URL(string: link.url) { NSWorkspace.shared.open(url) }
         }
+    }
+
+    // MARK: - Todos
+
+    @ViewBuilder
+    private func todosSection(_ result: SectionResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { expandTodos.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: expandTodos ? "chevron.down" : "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                    Image(systemName: "checklist").foregroundStyle(.tint)
+                    Text("Todos & Reminders").font(.headline)
+                    Text("\(result.items.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if expandTodos {
+                quickAddRow
+
+                if result.items.isEmpty {
+                    Text(result.status ?? "Nothing to do.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(result.items) { item in
+                            todoRow(item)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var quickAddRow: some View {
+        HStack(spacing: 8) {
+            TextField("Add a todo…", text: $newTodoTitle)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(addTodo)
+            Toggle(isOn: $newTodoHasDue) {
+                Image(systemName: "bell")
+            }
+            .toggleStyle(.button)
+            .help("Set a due time (fires a reminder notification)")
+            if newTodoHasDue {
+                DatePicker("", selection: $newTodoDue, displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+            }
+            Button("Add", action: addTodo)
+                .disabled(newTodoTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .padding(.bottom, 2)
+    }
+
+    private func todoRow(_ item: DigestItem) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                guard let id = item.externalID else { return }
+                Task { await coordinator.completeTodo(identifier: id) }
+            } label: {
+                Image(systemName: "circle")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.tint)
+            }
+            .buttonStyle(.plain)
+            .help("Mark complete")
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title).font(.body).lineLimit(2)
+                if let sub = item.subtitle, !sub.isEmpty {
+                    Text(sub)
+                        .font(.caption)
+                        .foregroundStyle(item.priority >= 100 ? .red : .secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            priorityDot(item.priority)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+    }
+
+    private func addTodo() {
+        let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+        let due = newTodoHasDue ? newTodoDue : nil
+        newTodoTitle = ""
+        newTodoHasDue = false
+        Task { await coordinator.addTodo(title: title, dueDate: due) }
     }
 
     private func relative(_ date: Date) -> String {

@@ -36,11 +36,15 @@ final class MissionControlCoordinator: ObservableObject {
             ? GmailFetcher.fetchUnread(config: cfg.gmail, vipSenders: cfg.vipSenders)
             : SectionResult(items: [], status: nil)
 
+        async let reminders: SectionResult = cfg.includeReminders
+            ? RemindersFetcher.fetchReminders(hours: cfg.lookbackHours)
+            : SectionResult(items: [], status: "Todos disabled in config.")
+
         async let notifications: SectionResult = cfg.includeNotifications
             ? NotificationsFetcher.fetchRecent(hours: cfg.lookbackHours, appBlocklist: cfg.notificationAppBlocklist)
             : SectionResult(items: [], status: "Notifications disabled in config.")
 
-        let (ek, oc, gc, o, gm, g, n) = await (eventKitEvents, outlookEvents, graphEvents, outlook, graphMail, gmail, notifications)
+        let (ek, oc, gc, o, gm, g, r, n) = await (eventKitEvents, outlookEvents, graphEvents, outlook, graphMail, gmail, reminders, notifications)
 
         let events = mergeEvents(
             eventKit: ek,
@@ -66,8 +70,21 @@ final class MissionControlCoordinator: ObservableObject {
             verse: verse,
             events: events,
             emails: emails,
+            reminders: r,
             notifications: n
         )
+    }
+
+    /// Add a todo (an EKReminder) and refresh so it appears in the digest.
+    func addTodo(title: String, dueDate: Date?) async {
+        await RemindersFetcher.addReminder(title: title, dueDate: dueDate)
+        await refresh()
+    }
+
+    /// Mark a todo complete and refresh so it drops off the list.
+    func completeTodo(identifier: String) async {
+        await RemindersFetcher.complete(identifier: identifier)
+        await refresh()
     }
 
     /// Replace the currently-shown verse with a random different one from the

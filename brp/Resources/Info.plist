@@ -32,6 +32,10 @@
     <string>Brother Paul reads your upcoming calendar events to show them in the Mission Control digest.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Brother Paul reads your upcoming calendar events to show them in the Mission Control digest.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>Brother Paul shows your open todos and lets you add reminders that notify you when due.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Brother Paul shows your open todos and lets you add reminders that notify you when due.</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
