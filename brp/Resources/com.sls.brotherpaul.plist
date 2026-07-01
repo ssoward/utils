@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Per-user LaunchAgent: starts Brother Paul automatically when the user
+         logs in (the earliest a menu-bar / LSUIElement GUI app can run — there
+         is no window-server session before login, so a pre-login LaunchDaemon
+         can't host a menu-bar UI). Installed to ~/Library/LaunchAgents/. -->
+    <key>Label</key>
+    <string>com.sls.brotherpaul</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/BrotherPaul.app/Contents/MacOS/BrotherPaul</string>
+    </array>
+
+    <!-- Launch at login. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Do NOT KeepAlive: this is a user-facing menu-bar app. If the user quits
+         it from the menu, launchd should leave it quit until next login. -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/brotherpaul.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/brotherpaul.err.log</string>
+</dict>
+</plist>
