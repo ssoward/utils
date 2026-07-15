@@ -64,10 +64,12 @@ final class MissionControlCoordinator: ObservableObject {
         )
 
         let verse = cfg.includeVerseOfDay ? VerseOfTheDay.todays() : nil
+        let reminder = cfg.includeMorningReminder ? MorningReminders.todays() : nil
 
         self.digest = Digest(
             generatedAt: Date(),
             verse: verse,
+            reminder: reminder,
             events: events,
             emails: emails,
             reminders: r,
@@ -92,6 +94,14 @@ final class MissionControlCoordinator: ObservableObject {
     func shuffleVerse() {
         guard var current = digest else { return }
         current.verse = VerseOfTheDay.randomVerse(excluding: current.verse)
+        digest = current
+    }
+
+    /// Replace the currently-shown reminder with a random different one from
+    /// the same pool. Ephemeral — a full refresh resets to today's reminder.
+    func shuffleReminder() {
+        guard var current = digest else { return }
+        current.reminder = MorningReminders.randomReminder(excluding: current.reminder)
         digest = current
     }
 

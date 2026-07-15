@@ -50,6 +50,7 @@ struct SectionResult {
 struct Digest {
     var generatedAt: Date
     var verse: Verse?
+    var reminder: Reminder?
     var events: SectionResult
     var emails: SectionResult
     var reminders: SectionResult

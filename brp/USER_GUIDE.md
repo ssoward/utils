@@ -375,6 +375,38 @@ number locally if you want to lock your edits against future seed refreshes.
 To disable the verse card entirely, set `missionControl.includeVerseOfDay`
 to `false`.
 
+### Morning Reminders
+
+Right under the verse card you can show a **Morning Reminder** — your own
+words, rotated one per day the same way the verse is (day-of-year modulo
+count). Use it for personal promises, counsel from a blessing, affirmations,
+goals — anything you want in front of you each morning.
+
+Unlike verses, there are **no built-in defaults and nothing personal ships in
+the app**: the content lives only on your Mac, in
+`~/Library/Application Support/BrotherPaul/reminders.json`. When that file is
+empty or missing, the card simply doesn't appear.
+
+**Add reminders:** 🧠 → **Edit Morning Reminders…** opens the file in your
+default editor. Each entry has `text` and an optional `source` (printed as
+the citation):
+
+```json
+[
+  {
+    "text": "Name your blessings one by one — gratitude unlocks revelation.",
+    "source": "Priesthood blessing, May 2026"
+  },
+  { "text": "Do not become discouraged." }
+]
+```
+
+Edits are picked up on the next Mission Control **Refresh** — no relaunch
+needed. The ⟳ button on the card shows a different reminder from your pool.
+
+To hide the card without deleting your entries, set
+`missionControl.includeMorningReminder` to `false`.
+
 ### Outlook calendar without Azure (no IT involvement)
 
 Microsoft removed AppleScript calendar access from Outlook for Mac, so the

@@ -26,6 +26,9 @@ struct MissionControlView: View {
                         if let verse = digest.verse {
                             verseCard(verse)
                         }
+                        if let reminder = digest.reminder {
+                            reminderCard(reminder)
+                        }
                         quickLinksSection()
                         section(
                             title: "Upcoming Events",
@@ -419,6 +422,38 @@ struct MissionControlView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.08))
+        )
+    }
+
+    private func reminderCard(_ reminder: Reminder) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "sun.max.fill")
+                .font(.body)
+                .foregroundStyle(.orange)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(reminder.text)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                if let source = reminder.source {
+                    Text("\u{2014} \(source)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+            Button {
+                coordinator.shuffleReminder()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.body)
+            }
+            .buttonStyle(.borderless)
+            .help("Show a different reminder")
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.08))
         )
     }
 }

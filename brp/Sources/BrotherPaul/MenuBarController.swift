@@ -174,6 +174,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         editVerses.target = self
         menu.addItem(editVerses)
 
+        let editReminders = NSMenuItem(
+            title: "Edit Morning Reminders…",
+            action: #selector(openRemindersFile),
+            keyEquivalent: ""
+        )
+        editReminders.target = self
+        menu.addItem(editReminders)
+
         let reload = NSMenuItem(
             title: "Reload Config",
             action: #selector(reloadConfig),
@@ -308,6 +316,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func openVersesFile() {
         VerseOfTheDay.installSeed()
         NSWorkspace.shared.open(VerseOfTheDay.customFileURL)
+    }
+
+    @objc private func openRemindersFile() {
+        MorningReminders.installSeed()
+        NSWorkspace.shared.open(MorningReminders.customFileURL)
     }
 
     @objc private func reloadConfig() {

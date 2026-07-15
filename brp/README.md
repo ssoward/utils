@@ -296,6 +296,7 @@ Open it via:
 | `includeNotifications`                     | `true`  | Read NotificationCenter DB (needs Full Disk Access) |
 | `includeReminders`                         | `true`  | Read/write macOS Reminders for the Todos section (needs Reminders access) |
 | `includeVerseOfDay`                        | `true`  | Show the daily verse card at the top of the digest  |
+| `includeMorningReminder`                   | `true`  | Show the Morning Reminder card (hidden when `reminders.json` is empty) |
 | `lookbackHours`                            | `24`    | Window for email + notifications, lookahead for events |
 | `vipSenders[]`                             | `[]`    | Substrings matched against from / display name      |
 | `notificationAppBlocklist[]`               | `[]`    | Bundle IDs to drop from the notifications section   |
@@ -356,6 +357,17 @@ defaults onto existing installs. Increment that marker to a high number if
 you've hand-edited the file and want to lock your edits in.
 
 Disable the card entirely: `missionControl.includeVerseOfDay: false`.
+
+### Morning Reminders
+
+A second card under the verse shows one **personal reminder per day**, rotated
+`day-of-year mod count` like the verse. There are no shipped defaults —
+content lives only in
+`~/Library/Application Support/BrotherPaul/reminders.json` (menu →
+**Edit Morning Reminders…**), so nothing personal is in the app source or
+repo. Each entry has `text` and optional `source`. An empty or missing file
+hides the card; edits show up on the next Mission Control refresh without
+relaunching. Disable via `missionControl.includeMorningReminder: false`.
 
 ### Quick Links
 
@@ -447,7 +459,8 @@ brpaul/
 │   ├── GraphCalendarFetcher.swift      # Microsoft Graph /me/calendarview
 │   ├── NotificationsFetcher.swift      # SQLite → NotificationCenter db
 │   ├── RemindersFetcher.swift          # EventKit reminders read/add/complete
-│   └── VerseOfTheDay.swift             # 132-verse rotation, file-overridable
+│   ├── VerseOfTheDay.swift             # 132-verse rotation, file-overridable
+│   └── MorningReminders.swift          # personal daily reminders (user file only)
 ├── Resources/
 │   ├── Info.plist              # Bundle metadata + usage descriptions
 │   └── config.example.json     # Seed config copied on first run
@@ -457,6 +470,7 @@ brpaul/
 ├── ~/Library/Application Support/BrotherPaul/
 │   ├── config.json                  # User-editable settings (auto-seeded)
 │   ├── verses.json                  # User-editable verse library (auto-seeded)
+│   ├── reminders.json               # User-editable morning reminders (private, never seeded with content)
 │   └── .verses-seed-version         # Seed-version marker
 └── build-app.sh                # Wraps the binary into BrotherPaul.app
 ```
@@ -465,7 +479,7 @@ brpaul/
 
 ## Testing & CI
 
-Run the full suite (159 tests, ~0.1s, no network):
+Run the full suite (171 tests, ~0.1s, no network):
 
 ```bash
 swift test

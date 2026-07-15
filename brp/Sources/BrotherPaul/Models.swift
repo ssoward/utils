@@ -59,6 +59,9 @@ struct MissionControlConfig: Codable {
     var includeNotifications: Bool
     var includeReminders: Bool
     var includeVerseOfDay: Bool
+    /// Show the Morning Reminder card (rotates daily from reminders.json).
+    /// The card also hides itself when the reminders file is empty.
+    var includeMorningReminder: Bool
     /// Look-back / look-ahead window in hours.
     var lookbackHours: Int
     /// Senders whose email is always considered priority (case-insensitive substring match against from-address or display name).
@@ -82,6 +85,7 @@ struct MissionControlConfig: Codable {
         includeNotifications: true,
         includeReminders: true,
         includeVerseOfDay: true,
+        includeMorningReminder: true,
         lookbackHours: 24,
         vipSenders: [],
         notificationAppBlocklist: [],
@@ -92,7 +96,7 @@ struct MissionControlConfig: Codable {
     )
 
     enum CodingKeys: String, CodingKey {
-        case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGraphMail, includeGmail, includeNotifications, includeReminders, includeVerseOfDay
+        case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGraphMail, includeGmail, includeNotifications, includeReminders, includeVerseOfDay, includeMorningReminder
         case lookbackHours, vipSenders, notificationAppBlocklist, openOnStartWork, quickLinks, gmail, graph
     }
 
@@ -106,6 +110,7 @@ struct MissionControlConfig: Codable {
         includeNotifications: Bool,
         includeReminders: Bool,
         includeVerseOfDay: Bool,
+        includeMorningReminder: Bool,
         lookbackHours: Int,
         vipSenders: [String],
         notificationAppBlocklist: [String],
@@ -123,6 +128,7 @@ struct MissionControlConfig: Codable {
         self.includeNotifications = includeNotifications
         self.includeReminders = includeReminders
         self.includeVerseOfDay = includeVerseOfDay
+        self.includeMorningReminder = includeMorningReminder
         self.lookbackHours = lookbackHours
         self.vipSenders = vipSenders
         self.notificationAppBlocklist = notificationAppBlocklist
@@ -144,6 +150,7 @@ struct MissionControlConfig: Codable {
         includeNotifications = try c.decodeIfPresent(Bool.self, forKey: .includeNotifications) ?? d.includeNotifications
         includeReminders = try c.decodeIfPresent(Bool.self, forKey: .includeReminders) ?? d.includeReminders
         includeVerseOfDay = try c.decodeIfPresent(Bool.self, forKey: .includeVerseOfDay) ?? d.includeVerseOfDay
+        includeMorningReminder = try c.decodeIfPresent(Bool.self, forKey: .includeMorningReminder) ?? d.includeMorningReminder
         lookbackHours = try c.decodeIfPresent(Int.self, forKey: .lookbackHours) ?? d.lookbackHours
         vipSenders = try c.decodeIfPresent([String].self, forKey: .vipSenders) ?? d.vipSenders
         notificationAppBlocklist = try c.decodeIfPresent([String].self, forKey: .notificationAppBlocklist) ?? d.notificationAppBlocklist

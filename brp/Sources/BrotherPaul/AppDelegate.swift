@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         ConfigManager.shared.bootstrap()
         VerseOfTheDay.installSeed()
+        MorningReminders.installSeed()
         menuBar.install()
         menuBar.onConfigChanged = { [weak self] in self?.applySnapConfig() }
         menuBar.onShowMissionControl = { [weak self] in
