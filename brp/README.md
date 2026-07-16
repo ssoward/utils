@@ -10,8 +10,9 @@ A native macOS menu bar app that:
 - Shows a **Mission Control digest** of upcoming events (EventKit +
   Microsoft Graph), priority email (Outlook AppleScript + Gmail API),
   **todos & reminders** (macOS Reminders / EventKit), recent notifications
-  (NotificationCenter DB), and a **daily Christ-focused verse** rotated from
-  a 132-passage library of the Book of Mormon and the KJV Gospels.
+  (NotificationCenter DB), a **daily Christ-focused verse** rotated from
+  a 132-passage library of the Book of Mormon and the KJV Gospels, and a
+  private **Morning Reminder card** drawn from your own `reminders.json`.
 - **Captures todos and reminders** — add them from the menu bar or Mission
   Control; those with a due time fire a native macOS reminder notification.
 
@@ -479,7 +480,7 @@ brpaul/
 
 ## Testing & CI
 
-Run the full suite (171 tests, ~0.1s, no network):
+Run the full suite (181 tests, ~0.1s, no network):
 
 ```bash
 swift test
@@ -489,7 +490,8 @@ The suite is unit-heavy with one acceptance-level smoke test. Coverage by area:
 
 - **Pure logic** — config decoding & `mode(named:)`, digest sorting, VIP /
   notification-blocklist matching, `brotherpaul://` URL parsing, snap zones,
-  verse rotation, agent tool risk/confirmation, voice session controller.
+  verse rotation, morning-reminder selection, agent tool risk/confirmation,
+  voice session controller.
 - **Mail fetchers** — the network-free response parsers extracted from
   `GmailFetcher` / `GraphMailFetcher` (`parseAccessToken`, `parseMessage(s)`,
   `parseMessageIDs`) are tested against captured Gmail + Graph JSON payloads.

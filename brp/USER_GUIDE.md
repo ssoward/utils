@@ -31,6 +31,10 @@ open /Applications/BrotherPaul.app
 
 You should see a 🧠 brain icon appear in the right side of your menu bar.
 
+Want it to start automatically every time you log in? Run
+`./bin/install-login-item.sh` once — details in the README's
+[Launch at login](README.md#launch-at-login) section.
+
 ### Grant Accessibility permission
 
 Window snap and "Hide Other Apps" need this.
