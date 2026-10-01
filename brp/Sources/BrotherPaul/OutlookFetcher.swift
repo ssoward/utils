@@ -4,12 +4,12 @@ import AppKit
 enum OutlookFetcher {
 
     // Records: subject \t sender \t timeReceived (one record per line, fields tab-separated).
-    private static let script = """
+    private static func script(hours: Int) -> String { """
     tell application "Microsoft Outlook"
         set output to ""
         try
             set msgs to (messages of inbox whose is read is false)
-            set cutoff to (current date) - (24 * hours)
+            set cutoff to (current date) - (\(max(1, hours)) * hours)
             repeat with m in msgs
                 try
                     set t to time received of m
@@ -31,13 +31,13 @@ enum OutlookFetcher {
         end try
         return output
     end tell
-    """
+    """ }
 
-    static func fetchUnread(vipSenders: [String]) async -> SectionResult {
-        await Task.detached(priority: .userInitiated) { runScript(vipSenders: vipSenders) }.value
+    static func fetchUnread(vipSenders: [String], hours: Int = 24) async -> SectionResult {
+        await Task.detached(priority: .userInitiated) { runScript(vipSenders: vipSenders, hours: hours) }.value
     }
 
-    private static func runScript(vipSenders: [String]) -> SectionResult {
+    private static func runScript(vipSenders: [String], hours: Int) -> SectionResult {
         guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.Outlook") != nil else {
             return SectionResult(items: [], status: "Microsoft Outlook is not installed.")
         }
@@ -51,7 +51,7 @@ enum OutlookFetcher {
         }
 
         var error: NSDictionary?
-        guard let apple = NSAppleScript(source: script) else {
+        guard let apple = NSAppleScript(source: script(hours: hours)) else {
             return SectionResult(items: [], status: "Internal: couldn't compile Outlook script.")
         }
 
@@ -80,11 +80,7 @@ enum OutlookFetcher {
             let date = isoFormatter.date(from: dateString)
                 ?? isoFallback.date(from: dateString)
 
-            let isVIP = vipSenders.contains { vip in
-                let v = vip.lowercased()
-                return !v.isEmpty && (sender.lowercased().contains(v) || subject.lowercased().contains(v))
-            }
-            let priority = isVIP ? 90 : 50
+            let priority = VIPMatcher.isVIP(haystacks: [sender, subject], vipSenders: vipSenders) ? 90 : 50
 
             items.append(DigestItem(
                 source: .outlook,
@@ -97,7 +93,7 @@ enum OutlookFetcher {
         }
 
         if items.isEmpty {
-            return SectionResult(items: [], status: "No unread Outlook mail in the last 24h.")
+            return SectionResult(items: [], status: "No unread Outlook mail in the last \(hours)h.")
         }
         return SectionResult(items: items, status: nil)
     }

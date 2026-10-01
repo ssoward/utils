@@ -3,6 +3,7 @@ import AppKit
 
 struct MissionControlView: View {
     @ObservedObject var coordinator: MissionControlCoordinator
+    @ObservedObject var todos: TodoMonitor = .shared
 
     @AppStorage("mc.expand.events")        private var expandEvents = true
     @AppStorage("mc.expand.emails")        private var expandEmails = true
@@ -23,6 +24,10 @@ struct MissionControlView: View {
             if let digest = coordinator.digest {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
+                        // Todos first: they're the thing that's easiest to miss.
+                        if ConfigManager.shared.config.missionControl.includeReminders {
+                            todosSection(todos.snapshot)
+                        }
                         if let verse = digest.verse {
                             verseCard(verse)
                         }
@@ -44,7 +49,6 @@ struct MissionControlView: View {
                             isExpanded: $expandEmails,
                             emptyText: "Inbox zero."
                         )
-                        todosSection(digest.reminders)
                         section(
                             title: "Recent Notifications",
                             icon: "bell.fill",
@@ -290,7 +294,7 @@ struct MissionControlView: View {
     // MARK: - Todos
 
     @ViewBuilder
-    private func todosSection(_ result: SectionResult) -> some View {
+    private func todosSection(_ snap: TodoSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
                 withAnimation(.easeInOut(duration: 0.18)) { expandTodos.toggle() }
@@ -300,14 +304,21 @@ struct MissionControlView: View {
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
                         .frame(width: 12)
-                    Image(systemName: "checklist").foregroundStyle(.tint)
+                    Image(systemName: "checklist")
+                        .foregroundStyle(snap.overdueCount > 0 ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
                     Text("Todos & Reminders").font(.headline)
-                    Text("\(result.items.count)")
+                    Text("\(snap.items.count)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
                         .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                    if snap.overdueCount > 0 {
+                        countPill("\(snap.overdueCount) overdue", color: .red)
+                    }
+                    if snap.dueTodayCount > 0 {
+                        countPill("\(snap.dueTodayCount) today", color: .orange)
+                    }
                     Spacer()
                 }
                 .contentShape(Rectangle())
@@ -317,24 +328,44 @@ struct MissionControlView: View {
             if expandTodos {
                 quickAddRow
 
-                if result.items.isEmpty {
-                    Text(result.status ?? "Nothing to do.")
+                if !todos.hasLoaded {
+                    ProgressView().scaleEffect(0.6)
+                } else if snap.items.isEmpty {
+                    Text(snap.status ?? "Nothing to do.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 } else {
                     VStack(spacing: 6) {
-                        ForEach(result.items) { item in
+                        ForEach(snap.items, id: \.todoKey) { item in
                             todoRow(item)
                         }
                     }
                 }
             }
         }
+        .padding(snap.overdueCount > 0 ? 10 : 0)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.red.opacity(snap.overdueCount > 0 ? 0.06 : 0))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.red.opacity(snap.overdueCount > 0 ? 0.35 : 0), lineWidth: 1)
+        )
+    }
+
+    private func countPill(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption.bold())
+            .foregroundStyle(.white)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(color))
     }
 
     private var quickAddRow: some View {
         HStack(spacing: 8) {
-            TextField("Add a todo…", text: $newTodoTitle)
+            TextField("Add a todo… (e.g. \u{201C}Send report tomorrow 3pm\u{201D})", text: $newTodoTitle)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(addTodo)
             Toggle(isOn: $newTodoHasDue) {
@@ -353,10 +384,11 @@ struct MissionControlView: View {
     }
 
     private func todoRow(_ item: DigestItem) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        let isOverdue = item.priority >= 100
+        return HStack(alignment: .top, spacing: 10) {
             Button {
                 guard let id = item.externalID else { return }
-                Task { await coordinator.completeTodo(identifier: id) }
+                Task { await todos.complete(identifier: id) }
             } label: {
                 Image(systemName: "circle")
                     .font(.system(size: 15))
@@ -370,30 +402,69 @@ struct MissionControlView: View {
                 if let sub = item.subtitle, !sub.isEmpty {
                     Text(sub)
                         .font(.caption)
-                        .foregroundStyle(item.priority >= 100 ? .red : .secondary)
+                        .foregroundStyle(isOverdue ? .red : .secondary)
+                        .fontWeight(isOverdue ? .semibold : .regular)
                         .lineLimit(1)
                 }
             }
             Spacer()
+            if let id = item.externalID {
+                snoozeMenu(id: id)
+            }
             priorityDot(item.priority)
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isOverdue ? Color.red.opacity(0.10) : Color.secondary.opacity(0.08))
+        )
+        .contextMenu {
+            if let id = item.externalID {
+                Button("Complete") { Task { await todos.complete(identifier: id) } }
+                Divider()
+                snoozeButtons(id: id)
+                Divider()
+            }
+            Button("Open Reminders") { RemindersFetcher.openRemindersApp() }
+        }
+    }
+
+    private func snoozeMenu(id: String) -> some View {
+        Menu {
+            snoozeButtons(id: id)
+        } label: {
+            Image(systemName: "clock.arrow.circlepath")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Snooze")
+    }
+
+    @ViewBuilder
+    private func snoozeButtons(id: String) -> some View {
+        ForEach(RemindersFetcher.SnoozeOption.allCases, id: \.self) { option in
+            if let target = option.target() {
+                Button(option.title) {
+                    Task { await todos.snooze(identifier: id, until: target) }
+                }
+            }
+        }
     }
 
     private func addTodo() {
-        let title = newTodoTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else { return }
-        let due = newTodoHasDue ? newTodoDue : nil
+        // An explicit due time wins; otherwise pick one out of the text ("…tomorrow 3pm").
+        let parsed = newTodoHasDue
+            ? TodoParser.Result(title: newTodoTitle.trimmingCharacters(in: .whitespaces), dueDate: newTodoDue)
+            : TodoParser.parse(newTodoTitle)
+        guard !parsed.title.isEmpty else { return }
         newTodoTitle = ""
         newTodoHasDue = false
-        Task { await coordinator.addTodo(title: title, dueDate: due) }
+        Task { await todos.add(title: parsed.title, dueDate: parsed.dueDate) }
     }
 
     private func relative(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        Formatters.relative.localizedString(for: date, relativeTo: Date())
     }
 
     private func verseCard(_ verse: Verse) -> some View {
@@ -456,4 +527,10 @@ struct MissionControlView: View {
             RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.08))
         )
     }
+}
+
+private extension DigestItem {
+    /// Stable row identity across refreshes (DigestItem.id is a fresh UUID each fetch),
+    /// so completing one todo doesn't re-animate the whole list.
+    var todoKey: String { externalID ?? id.uuidString }
 }

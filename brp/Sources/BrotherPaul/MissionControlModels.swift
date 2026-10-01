@@ -53,6 +53,5 @@ struct Digest {
     var reminder: Reminder?
     var events: SectionResult
     var emails: SectionResult
-    var reminders: SectionResult
     var notifications: SectionResult
 }

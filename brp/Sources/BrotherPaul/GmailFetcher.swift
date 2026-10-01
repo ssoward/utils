@@ -2,7 +2,7 @@ import Foundation
 
 enum GmailFetcher {
 
-    static func fetchUnread(config: GmailConfig, vipSenders: [String]) async -> SectionResult {
+    static func fetchUnread(config: GmailConfig, vipSenders: [String], hours: Int = 24) async -> SectionResult {
         guard config.isConfigured else {
             return SectionResult(items: [], status: "Gmail not configured — see USER_GUIDE.md → Mission Control → Gmail.")
         }
@@ -15,7 +15,8 @@ enum GmailFetcher {
         }
 
         do {
-            let ids = try await listMessageIDs(query: "is:unread newer_than:1d", token: token)
+            let days = max(1, Int((Double(hours) / 24).rounded(.up)))
+            let ids = try await listMessageIDs(query: "is:unread newer_than:\(days)d", token: token)
             var items: [DigestItem] = []
             for id in ids.prefix(20) {
                 if let item = try await fetchMessage(id: id, token: token, vipSenders: vipSenders) {
@@ -23,7 +24,7 @@ enum GmailFetcher {
                 }
             }
             if items.isEmpty {
-                return SectionResult(items: [], status: "No unread Gmail in the last 24h.")
+                return SectionResult(items: [], status: "No unread Gmail in the last \(days * 24)h.")
             }
             return SectionResult(items: items, status: nil)
         } catch {

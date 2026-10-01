@@ -45,13 +45,12 @@ enum NotificationsFetcher {
         sqlite3_bind_double(stmt, 1, cutoff)
 
         var items: [DigestItem] = []
-        let blocklistLower = Set(blocklist.map { $0.lowercased() })
 
         while sqlite3_step(stmt) == SQLITE_ROW {
             let deliveredSinceRef = sqlite3_column_double(stmt, 0)
             let identifier = String(cString: sqlite3_column_text(stmt, 1))
 
-            if blocklistLower.contains(identifier.lowercased()) { continue }
+            if !NotificationBlocklist.shouldInclude(bundleID: identifier, blocklist: blocklist) { continue }
 
             guard let blobPtr = sqlite3_column_blob(stmt, 2) else { continue }
             let blobLen = sqlite3_column_bytes(stmt, 2)

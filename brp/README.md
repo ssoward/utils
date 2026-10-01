@@ -79,9 +79,14 @@ Click the brain icon in the menu bar:
   Mission Control or the Settings window with `⌘W`. (`⌘Q` does nothing
   on these windows — Brother Paul is an accessory app with no main menu;
   quit the whole app from this menu's **Quit** item.)
+- **Todos** (top of the menu) — your open todos, most urgent first. Hover
+  one for **Complete**, **Snooze** (1 hour / this evening / tomorrow 9 AM),
+  or **Open Reminders**. The menu-bar icon itself shows the count of
+  overdue + due-today todos and turns **red** while anything is overdue
+  (**orange** when something is due today).
 - **New Todo…** (`⌘T`) — quick-capture a todo into your default macOS
-  Reminders list. For a due time / reminder alert, use the quick-add row in
-  Mission Control.
+  Reminders list. Put a time in the text ("Send report tomorrow 3pm") and it
+  becomes the due time, with a reminder alert.
 - **Modes ▸** — pick Deep Work, Meetings, Admin, or any custom mode
 - **Hide Other Apps After Launch** — toggle "hide others after launch"
 - **Snap Focused Window ▸** — snap to half / quarter / maximize / center;
@@ -273,9 +278,14 @@ A daily digest window that surfaces:
   Gmail (Gmail REST API), with VIP-sender boost.
 - **Todos & reminders** — open items from the macOS Reminders app (EventKit):
   overdue and undated todos plus anything due within the look-ahead window,
-  sorted most-urgent-first. Add one inline with the quick-add row (optional
-  due time), or check it off to mark it complete. Reminders with a due time
-  carry an alarm, so macOS notifies you when they come due.
+  sorted most-urgent-first, at the **top** of the digest (outlined in red
+  while anything is overdue). Add one inline with the quick-add row (optional
+  due time, or type it: "…tomorrow 3pm"), check it off, or snooze it.
+  Reminders with a due time carry an alarm, so macOS notifies you when they
+  come due — and while anything stays overdue, Brother Paul nudges you again
+  every `overdueNudgeMinutes` (clicking the nudge opens Mission Control).
+  Todos update live (Reminders changes from any device, plus a once-a-minute
+  check), independently of the rest of the digest.
 - **Recent notifications** — last *N* hours of macOS Notification Center,
   read directly from its SQLite database (requires Full Disk Access).
 
@@ -298,6 +308,9 @@ Open it via:
 | `includeReminders`                         | `true`  | Read/write macOS Reminders for the Todos section (needs Reminders access) |
 | `includeVerseOfDay`                        | `true`  | Show the daily verse card at the top of the digest  |
 | `includeMorningReminder`                   | `true`  | Show the Morning Reminder card (hidden when `reminders.json` is empty) |
+| `showTodoCountInMenuBar`                   | `true`  | Show overdue + due-today todo count next to the menu-bar icon (icon turns red when overdue) |
+| `overdueNudgeMinutes`                      | `60`    | While any todo is overdue, re-notify this often (`0` = off) |
+| `autoRefreshMinutes`                       | `5`     | Re-fetch the digest this often while Mission Control is open (`0` = off) |
 | `lookbackHours`                            | `24`    | Window for email + notifications, lookahead for events |
 | `vipSenders[]`                             | `[]`    | Substrings matched against from / display name      |
 | `notificationAppBlocklist[]`               | `[]`    | Bundle IDs to drop from the notifications section   |
@@ -459,7 +472,10 @@ brpaul/
 │   ├── GmailFetcher.swift              # Gmail REST + OAuth refresh
 │   ├── GraphCalendarFetcher.swift      # Microsoft Graph /me/calendarview
 │   ├── NotificationsFetcher.swift      # SQLite → NotificationCenter db
-│   ├── RemindersFetcher.swift          # EventKit reminders read/add/complete
+│   ├── RemindersFetcher.swift          # EventKit reminders read/add/complete/snooze
+│   ├── TodoMonitor.swift               # live todo snapshot → menu badge, menu list, overdue nudges
+│   ├── TodoBadge.swift                 # menu-bar badge rules (count + red/orange)
+│   ├── TodoParser.swift                # "…tomorrow 3pm" → due date for quick capture
 │   ├── VerseOfTheDay.swift             # 132-verse rotation, file-overridable
 │   └── MorningReminders.swift          # personal daily reminders (user file only)
 ├── Resources/

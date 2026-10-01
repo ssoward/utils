@@ -1,11 +1,16 @@
 import AppKit
+import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
 
-    private let menuBar = MenuBarController()
+    private lazy var menuBar = MenuBarController()
     private let hotkeys = HotkeyManager()
     private let dragSnapper = DragSnapper()
-    @MainActor private lazy var missionControl = MissionControlWindow()
+    private lazy var missionControl = MissionControlWindow()
+
+    // main.swift constructs us from top-level (nonisolated) code.
+    nonisolated override init() { super.init() }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Register before applicationDidFinishLaunching so a brotherpaul:// URL
@@ -29,6 +34,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.onShowMissionControl = { [weak self] in
             Task { @MainActor in self?.missionControl.show() }
         }
+        menuBar.onStartMode = { [weak self] name in self?.launch(modeName: name) }
+        menuBar.onEndMode = { [weak self] name in self?.endSession(modeName: name) }
+
+        // Todos: background monitor drives the menu-bar badge + overdue nudges.
+        if Bundle.main.bundleIdentifier != nil {
+            UNUserNotificationCenter.current().delegate = self
+        }
+        TodoMonitor.shared.onChange = { [weak self] snap in self?.menuBar.updateBadge(snap) }
+        TodoMonitor.shared.start()
 
         applySnapConfig()
 
@@ -38,6 +52,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     func showMissionControl() {
         missionControl.show()
+    }
+
+    // MARK: - Notifications
+
+    /// Show our banners even while a Brother Paul window is frontmost.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .list])
+    }
+
+    /// Clicking an overdue-todo nudge opens Mission Control.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let isNudge = response.notification.request.identifier == TodoMonitor.nudgeIdentifier
+        Task { @MainActor in
+            if isNudge { self.missionControl.show() }
+            completionHandler()
+        }
     }
 
     /// (Re-)install hotkeys and drag-snap based on current config + permission.
@@ -101,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Shared launch entry point
 
-    private func launch(modeName: String?) {
+    func launch(modeName: String?) {
         let config = ConfigManager.shared.config
         let requested = modeName ?? config.defaultMode
 

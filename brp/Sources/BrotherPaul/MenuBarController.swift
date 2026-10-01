@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
@@ -13,6 +14,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// Invoked when the user picks "Mission Control" from the menu.
     var onShowMissionControl: (() -> Void)?
 
+    /// Start / end a session by mode name (nil = default mode). Routed through
+    /// AppDelegate so the menu behaves exactly like the URL scheme and CLI
+    /// (e.g. honoring `openOnStartWork`).
+    var onStartMode: ((String?) -> Void)?
+    var onEndMode: ((String?) -> Void)?
+
+    /// Max todos listed inline in the menu before "Show all…".
+    private let menuTodoLimit = 8
+
     func install() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
@@ -21,8 +31,36 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 accessibilityDescription: "Brother Paul"
             )
             button.toolTip = "Brother Paul — start my work"
+            button.imagePosition = .imageLeading
         }
         rebuildMenu()
+        updateBadge(TodoMonitor.shared.snapshot)
+    }
+
+    /// Menu-bar badge: count of overdue + due-today todos. The icon turns red
+    /// while anything is overdue and orange when something is due today, so a
+    /// glance at the menu bar is enough to know a todo needs you.
+    func updateBadge(_ snapshot: TodoSnapshot) {
+        guard let button = statusItem?.button else { return }
+        let cfg = ConfigManager.shared.config.missionControl
+        let badge = TodoBadge(snapshot: snapshot, enabled: cfg.showTodoCountInMenuBar && cfg.includeReminders)
+
+        button.contentTintColor = {
+            switch badge.level {
+            case .overdue: return .systemRed
+            case .dueToday: return .systemOrange
+            case .none: return nil
+            }
+        }()
+        if badge.text.isEmpty {
+            button.attributedTitle = NSAttributedString(string: "")
+        } else {
+            button.attributedTitle = NSAttributedString(string: badge.text, attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold),
+                .foregroundColor: badge.level == .overdue ? NSColor.systemRed : NSColor.labelColor,
+            ])
+        }
+        button.toolTip = badge.toolTip
     }
 
     func rebuildMenu() {
@@ -34,6 +72,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
+
+        if config.missionControl.includeReminders {
+            addTodoItems(to: menu)
+            menu.addItem(.separator())
+        }
 
         let startTitle = "Start \(config.defaultMode) Session"
         let startItem = NSMenuItem(
@@ -60,14 +103,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         )
         mcItem.target = self
         menu.addItem(mcItem)
-
-        let todoItem = NSMenuItem(
-            title: "New Todo…",
-            action: #selector(newTodo),
-            keyEquivalent: "t"
-        )
-        todoItem.target = self
-        menu.addItem(todoItem)
 
         let modesMenu = NSMenu(title: "Modes")
         for mode in config.modes {
@@ -220,29 +255,113 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         rebuildMenu()
+        // Menu shows the cached snapshot instantly; pull a fresh one for next time.
+        TodoMonitor.shared.refresh()
     }
 
+    // MARK: - Todos in the menu
+
+    private func addTodoItems(to menu: NSMenu) {
+        let monitor = TodoMonitor.shared
+        let snap = monitor.snapshot
+
+        let headerItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        headerItem.isEnabled = false
+        headerItem.attributedTitle = TodoBadge.menuHeader(for: snap, loaded: monitor.hasLoaded)
+        menu.addItem(headerItem)
+
+        for item in snap.items.prefix(menuTodoLimit) {
+            menu.addItem(todoMenuItem(item))
+        }
+
+        if snap.items.count > menuTodoLimit {
+            let more = NSMenuItem(
+                title: "Show all \(snap.items.count) todos…",
+                action: #selector(showMissionControl),
+                keyEquivalent: ""
+            )
+            more.target = self
+            menu.addItem(more)
+        }
+
+        let todoItem = NSMenuItem(
+            title: "New Todo…",
+            action: #selector(newTodo),
+            keyEquivalent: "t"
+        )
+        todoItem.target = self
+        menu.addItem(todoItem)
+    }
+
+    private func todoMenuItem(_ item: DigestItem) -> NSMenuItem {
+        let mi = NSMenuItem(title: item.title, action: nil, keyEquivalent: "")
+        let title = item.title.count > 48 ? String(item.title.prefix(47)) + "…" : item.title
+        let attributed = NSMutableAttributedString(string: title, attributes: [
+            .font: NSFont.menuFont(ofSize: 0),
+        ])
+        if let sub = item.subtitle, !sub.isEmpty {
+            attributed.append(NSAttributedString(string: "   \(sub)", attributes: [
+                .font: NSFont.menuFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: item.priority >= 100 ? NSColor.systemRed : NSColor.secondaryLabelColor,
+            ]))
+        }
+        mi.attributedTitle = attributed
+        mi.image = TodoBadge.dotImage(priority: item.priority)
+
+        let sub = NSMenu()
+        let id = item.externalID ?? ""
+
+        let done = NSMenuItem(title: "Complete", action: #selector(completeTodo(_:)), keyEquivalent: "")
+        done.target = self
+        done.representedObject = id
+        done.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
+        sub.addItem(done)
+        sub.addItem(.separator())
+
+        for option in RemindersFetcher.SnoozeOption.allCases {
+            guard let target = option.target() else { continue }
+            let s = NSMenuItem(title: option.title, action: #selector(snoozeTodo(_:)), keyEquivalent: "")
+            s.target = self
+            s.representedObject = SnoozeRequest(identifier: id, until: target)
+            sub.addItem(s)
+        }
+        sub.addItem(.separator())
+
+        let open = NSMenuItem(title: "Open Reminders", action: #selector(openReminders), keyEquivalent: "")
+        open.target = self
+        sub.addItem(open)
+
+        mi.submenu = sub
+        return mi
+    }
+
+    @objc private func completeTodo(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, !id.isEmpty else { return }
+        Task { await TodoMonitor.shared.complete(identifier: id) }
+    }
+
+    @objc private func snoozeTodo(_ sender: NSMenuItem) {
+        guard let req = sender.representedObject as? SnoozeRequest, !req.identifier.isEmpty else { return }
+        Task { await TodoMonitor.shared.snooze(identifier: req.identifier, until: req.until) }
+    }
+
+    @objc private func openReminders() {
+        RemindersFetcher.openRemindersApp()
+    }
+
+    // MARK: - Sessions
+
     @objc private func startDefault() {
-        let config = ConfigManager.shared.config
-        let mode = config.mode(named: config.defaultMode) ?? config.modes.first
-        guard let mode = mode else { return }
-        AppLauncher.launch(mode: mode, hideOthers: config.hideOthersAfterLaunch)
+        onStartMode?(nil)
     }
 
     @objc private func startNamedMode(_ sender: NSMenuItem) {
-        guard let name = sender.representedObject as? String,
-              let mode = ConfigManager.shared.config.mode(named: name) else { return }
-        AppLauncher.launch(
-            mode: mode,
-            hideOthers: ConfigManager.shared.config.hideOthersAfterLaunch
-        )
+        guard let name = sender.representedObject as? String else { return }
+        onStartMode?(name)
     }
 
     @objc private func endDefault() {
-        let config = ConfigManager.shared.config
-        let mode = config.mode(named: config.defaultMode) ?? config.modes.first
-        guard let mode = mode else { return }
-        AppLauncher.end(mode: mode)
+        onEndMode?(nil)
     }
 
     @objc private func toggleHideOthers() {
@@ -287,12 +406,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         onShowMissionControl?()
     }
 
-    /// Fast todo capture from the menu bar: title-only prompt. Set a due time /
-    /// reminder from the Mission Control quick-add or the Reminders app.
+    /// Fast todo capture from the menu bar. A date/time in the text ("…tomorrow
+    /// 3pm") becomes the due time and fires a reminder notification.
     @objc private func newTodo() {
         let alert = NSAlert()
         alert.messageText = "New Todo"
-        alert.informativeText = "Add a reminder to your default Reminders list."
+        alert.informativeText = "Add a reminder to your default Reminders list. Include a time like \u{201C}tomorrow 3pm\u{201D} to get notified."
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
 
@@ -304,9 +423,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        let title = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        Task { await RemindersFetcher.addReminder(title: title) }
+        let parsed = TodoParser.parse(field.stringValue)
+        guard !parsed.title.isEmpty else { return }
+        Task { await TodoMonitor.shared.add(title: parsed.title, dueDate: parsed.dueDate) }
     }
 
     @objc private func openConfigFile() {
@@ -328,6 +447,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             try ConfigManager.shared.reload()
             rebuildMenu()
             onConfigChanged?()
+            TodoMonitor.shared.refresh()
         } catch {
             let alert = NSAlert()
             alert.messageText = "Couldn't reload config"
@@ -363,5 +483,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+/// Carries a snooze target through NSMenuItem.representedObject.
+private final class SnoozeRequest: NSObject {
+    let identifier: String
+    let until: Date
+    init(identifier: String, until: Date) {
+        self.identifier = identifier
+        self.until = until
     }
 }

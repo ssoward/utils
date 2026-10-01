@@ -74,6 +74,12 @@ struct MissionControlConfig: Codable {
     var quickLinks: [QuickLink]
     var gmail: GmailConfig
     var graph: GraphConfig
+    /// Show the count of overdue + due-today todos next to the menu-bar icon.
+    var showTodoCountInMenuBar: Bool
+    /// While any todo is overdue, post a reminder notification this often. 0 disables.
+    var overdueNudgeMinutes: Int
+    /// Re-fetch the Mission Control digest this often while its window is open. 0 disables.
+    var autoRefreshMinutes: Int
 
     static let `default` = MissionControlConfig(
         includeCalendar: true,
@@ -92,12 +98,16 @@ struct MissionControlConfig: Codable {
         openOnStartWork: true,
         quickLinks: [],
         gmail: GmailConfig(),
-        graph: GraphConfig()
+        graph: GraphConfig(),
+        showTodoCountInMenuBar: true,
+        overdueNudgeMinutes: 60,
+        autoRefreshMinutes: 5
     )
 
     enum CodingKeys: String, CodingKey {
         case includeCalendar, includeOutlook, includeOutlookCalendar, includeGraphCalendar, includeGraphMail, includeGmail, includeNotifications, includeReminders, includeVerseOfDay, includeMorningReminder
         case lookbackHours, vipSenders, notificationAppBlocklist, openOnStartWork, quickLinks, gmail, graph
+        case showTodoCountInMenuBar, overdueNudgeMinutes, autoRefreshMinutes
     }
 
     init(
@@ -117,7 +127,10 @@ struct MissionControlConfig: Codable {
         openOnStartWork: Bool,
         quickLinks: [QuickLink],
         gmail: GmailConfig,
-        graph: GraphConfig
+        graph: GraphConfig,
+        showTodoCountInMenuBar: Bool = true,
+        overdueNudgeMinutes: Int = 60,
+        autoRefreshMinutes: Int = 5
     ) {
         self.includeCalendar = includeCalendar
         self.includeOutlook = includeOutlook
@@ -136,6 +149,9 @@ struct MissionControlConfig: Codable {
         self.quickLinks = quickLinks
         self.gmail = gmail
         self.graph = graph
+        self.showTodoCountInMenuBar = showTodoCountInMenuBar
+        self.overdueNudgeMinutes = overdueNudgeMinutes
+        self.autoRefreshMinutes = autoRefreshMinutes
     }
 
     init(from decoder: Decoder) throws {
@@ -158,6 +174,9 @@ struct MissionControlConfig: Codable {
         quickLinks = try c.decodeIfPresent([QuickLink].self, forKey: .quickLinks) ?? d.quickLinks
         gmail = try c.decodeIfPresent(GmailConfig.self, forKey: .gmail) ?? d.gmail
         graph = try c.decodeIfPresent(GraphConfig.self, forKey: .graph) ?? d.graph
+        showTodoCountInMenuBar = try c.decodeIfPresent(Bool.self, forKey: .showTodoCountInMenuBar) ?? d.showTodoCountInMenuBar
+        overdueNudgeMinutes = try c.decodeIfPresent(Int.self, forKey: .overdueNudgeMinutes) ?? d.overdueNudgeMinutes
+        autoRefreshMinutes = try c.decodeIfPresent(Int.self, forKey: .autoRefreshMinutes) ?? d.autoRefreshMinutes
     }
 }
 

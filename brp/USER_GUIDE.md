@@ -217,7 +217,7 @@ Brother Paul builds a one-pager:
    • Gmail     "FYI: prod alert"  ops-bot…  2h ago
    • …
 
-✅ Todos & Reminders  (3)
+✅ Todos & Reminders  (3)  [1 overdue] [1 today]
    [ Add a todo…                     🔔  Add ]
    • ○  Email the quarterly report   Overdue · Mon 9:00 AM
    • ○  Call the plumber             Due 2:30 PM
@@ -243,17 +243,35 @@ nothing to bind ⌘Q to. Quit the whole app from 🧠 → **Quit**.)
 
 Brother Paul reads your **macOS Reminders** and shows the ones that matter
 now — anything overdue, undated, or due within the look-ahead window —
-most-urgent first. To capture a new one:
+most-urgent first. Todos are built to be hard to miss:
+
+- **Menu-bar badge:** the 🧠 icon shows how many todos are overdue or due
+  today (e.g. 🧠 3). It turns **red** while anything is overdue and
+  **orange** when something is due today. Hover for a breakdown.
+- **In the menu:** your todos are listed at the top of the 🧠 menu. Hover
+  one to **Complete** it, **Snooze** it (1 hour, this evening, tomorrow
+  9 AM), or open Reminders.
+- **Top of Mission Control:** the Todos section comes first, with red/orange
+  count pills, and is outlined in red while anything is overdue.
+- **Nudges:** while anything stays overdue, you get a notification listing
+  it every hour (`missionControl.overdueNudgeMinutes`; `0` turns it off).
+  Click it to open Mission Control. If something is already overdue when
+  Brother Paul starts (e.g. at login), you're nudged right away.
+
+To capture a new one:
 
 - **In Mission Control:** type into the "Add a todo…" row and hit **Add**
-  (or Return). Tap the 🔔 button first to reveal a date/time picker — todos
-  with a due time get an alarm, so macOS notifies you when they come due.
-- **From the menu bar:** 🧠 → **New Todo…** (`⌘T`) for a quick title-only
-  capture without opening the window.
+  (or Return). Type a time right into the text — "Send report tomorrow
+  3pm" — or tap the 🔔 button for a date/time picker. Todos with a due time
+  get an alarm, so macOS notifies you when they come due.
+- **From the menu bar:** 🧠 → **New Todo…** (`⌘T`) — same natural-language
+  times work here.
 
-Tap the ○ next to any todo to mark it complete — it drops off the list on
-the next refresh. Everything lives in your default Reminders list, so it
-syncs to your iPhone and stays in sync if you complete it elsewhere.
+Tap the ○ next to any todo to mark it complete — it disappears immediately.
+Right-click a todo (or use its 🕘 button) to snooze it. Everything lives in
+your Reminders lists, so it syncs to your iPhone and updates here within
+moments if you complete it elsewhere. Date-only reminders (no time) count
+as due *by the end of* that day, not overdue at midnight.
 
 ### Quick Links
 

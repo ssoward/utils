@@ -25,7 +25,7 @@ final class MissionControlCoordinator: ObservableObject {
             : SectionResult(items: [], status: nil)
 
         async let outlook: SectionResult = cfg.includeOutlook
-            ? OutlookFetcher.fetchUnread(vipSenders: cfg.vipSenders)
+            ? OutlookFetcher.fetchUnread(vipSenders: cfg.vipSenders, hours: cfg.lookbackHours)
             : SectionResult(items: [], status: nil)
 
         async let graphMail: SectionResult = cfg.includeGraphMail
@@ -33,18 +33,17 @@ final class MissionControlCoordinator: ObservableObject {
             : SectionResult(items: [], status: nil)
 
         async let gmail: SectionResult = cfg.includeGmail
-            ? GmailFetcher.fetchUnread(config: cfg.gmail, vipSenders: cfg.vipSenders)
+            ? GmailFetcher.fetchUnread(config: cfg.gmail, vipSenders: cfg.vipSenders, hours: cfg.lookbackHours)
             : SectionResult(items: [], status: nil)
 
-        async let reminders: SectionResult = cfg.includeReminders
-            ? RemindersFetcher.fetchReminders(hours: cfg.lookbackHours)
-            : SectionResult(items: [], status: "Todos disabled in config.")
+        // Todos are owned by TodoMonitor (shared with the menu-bar badge).
+        async let todos: Void = TodoMonitor.shared.refreshNow()
 
         async let notifications: SectionResult = cfg.includeNotifications
             ? NotificationsFetcher.fetchRecent(hours: cfg.lookbackHours, appBlocklist: cfg.notificationAppBlocklist)
             : SectionResult(items: [], status: "Notifications disabled in config.")
 
-        let (ek, oc, gc, o, gm, g, r, n) = await (eventKitEvents, outlookEvents, graphEvents, outlook, graphMail, gmail, reminders, notifications)
+        let (ek, oc, gc, o, gm, g, n, _) = await (eventKitEvents, outlookEvents, graphEvents, outlook, graphMail, gmail, notifications, todos)
 
         let events = mergeEvents(
             eventKit: ek,
@@ -72,21 +71,8 @@ final class MissionControlCoordinator: ObservableObject {
             reminder: reminder,
             events: events,
             emails: emails,
-            reminders: r,
             notifications: n
         )
-    }
-
-    /// Add a todo (an EKReminder) and refresh so it appears in the digest.
-    func addTodo(title: String, dueDate: Date?) async {
-        await RemindersFetcher.addReminder(title: title, dueDate: dueDate)
-        await refresh()
-    }
-
-    /// Mark a todo complete and refresh so it drops off the list.
-    func completeTodo(identifier: String) async {
-        await RemindersFetcher.complete(identifier: identifier)
-        await refresh()
     }
 
     /// Replace the currently-shown verse with a random different one from the
@@ -160,10 +146,7 @@ final class MissionControlCoordinator: ObservableObject {
                 deduped.append(item)
             }
         }
-        deduped.sort {
-            if $0.priority != $1.priority { return $0.priority > $1.priority }
-            return ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast)
-        }
+        deduped = DigestSorter.sort(deduped)
 
         var statuses: [String] = []
         if includingOutlook,   let s = outlook.status   { statuses.append("Outlook: \(s)") }

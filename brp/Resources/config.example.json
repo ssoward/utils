@@ -64,6 +64,12 @@
       "clientID": "",
       "tenant": "common",
       "refreshToken": ""
-    }
+    },
+    "includeGraphMail": false,
+    "includeVerseOfDay": true,
+    "quickLinks": [],
+    "showTodoCountInMenuBar": true,
+    "overdueNudgeMinutes": 60,
+    "autoRefreshMinutes": 5
   }
 }
